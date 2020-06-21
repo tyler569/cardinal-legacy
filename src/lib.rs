@@ -4,6 +4,9 @@ use core::panic::PanicInfo;
 use core::fmt::{self, Write};
 use core::iter::Iterator;
 
+mod serial;
+mod x86;
+
 const VGA: *mut u16 = 0xFFFF_FFFF_800B_8000 as *mut u16;
 
 struct FmtBuffer<'a> {
@@ -60,11 +63,12 @@ pub extern "C" fn kernel_main() -> ! {
 
     let mut buf: [u8; 128] = [0; 128];
     let mut b = FmtBuffer::new(&mut buf);
-
     write!(b, "Hello World {}", 1234).unwrap();
     let l = b.len();
-
     print(3, &buf[..l]);
+
+    let mut s = serial::SerialPort::new(0x3f8);
+    write!(s, "Hello World {}\r\n", 1235).unwrap();
 
     loop {}
 }
