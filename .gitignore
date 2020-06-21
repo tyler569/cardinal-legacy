@@ -1,0 +1,7 @@
+/target
+
+*.o
+*.elf
+*.iso
+
+last_output

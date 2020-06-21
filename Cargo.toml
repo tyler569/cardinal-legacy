@@ -1,0 +1,9 @@
+[package]
+name = "cardinal"
+version = "0.1.0"
+authors = ["Tyler Philbrick <tyler@tylerphilbrick.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["staticlib"]
+
