@@ -95,6 +95,10 @@ impl fmt::Write for VgaScreen {
                     self.x = 0;
                     self.y += 1;
                 },
+                '\t' => {
+                    self.x += 7;
+                    self.x &= !7;
+                },
                 x @ _ => {
                     self.set(Self::vga_char(x));
                     self.step();
@@ -113,6 +117,7 @@ pub extern "C" fn kernel_main() -> ! {
     v.clear();
     write!(v, "Hello World from\n").unwrap();
     write!(v, "The Cardinal Operating System\n").unwrap();
+    write!(v, "123\t12\t1\t\n").unwrap();
 
     let mut buf: [u8; 128] = [0; 128];
 
