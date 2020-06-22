@@ -1,3 +1,4 @@
+; vim: syntax=nasm :
 
 section .text
 
@@ -43,4 +44,14 @@ inl:
     in eax, dx
     ret
 
+
+global enable_irqs
+enable_irqs:
+    sti
+    ret
+
+global disable_irqs
+disable_irqs:
+    cli
+    ret
 

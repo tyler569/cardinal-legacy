@@ -28,6 +28,11 @@ impl SerialPort {
 
         SerialPort { port }
     }
+
+    // For the case where the port is already initialized
+    pub unsafe fn new_raw(port: u16) -> Self {
+        SerialPort { port }
+    }
 }
 
 impl fmt::Write for SerialPort {

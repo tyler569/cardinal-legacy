@@ -1,3 +1,4 @@
+; vim: syntax=nasm :
 
 extern c_interrupt_shim
 

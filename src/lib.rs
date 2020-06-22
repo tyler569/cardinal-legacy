@@ -1,5 +1,7 @@
 #![no_std]
 
+#![feature(asm)]
+
 use core::panic::PanicInfo;
 use core::fmt::{self, Write};
 use core::iter::Iterator;
@@ -70,16 +72,36 @@ pub extern "C" fn kernel_main() -> ! {
     let mut s = serial::SerialPort::new(0x3f8);
     write!(s, "Hello World {}\r\n", 1235).unwrap();
 
+    x86::idt_init();
+    x86::pic_init();
+    x86::unmask_irq(4);
+    unsafe { x86::enable_irqs(); }
+
+    unsafe {
+        asm! {
+            "int3"
+        }
+    }
+
     loop {}
 }
 
 
-
-
 #[no_mangle]
-pub extern "C" fn c_interrupt_shim() {}
+pub extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
+    let mut serial = unsafe { serial::SerialPort::new_raw(0x3f8) };
+
+    let interrupt = unsafe { (*frame).interrupt_number };
+
+    write!(serial, "interrupt {}\r\n", interrupt).unwrap();
+}
+
 
 #[panic_handler]
-fn panic(_: &PanicInfo) -> ! {
+fn panic(panic_info: &PanicInfo) -> ! {
+    let mut serial = unsafe { serial::SerialPort::new_raw(0x3f8) };
+
+    write!(serial, "{}", panic_info).unwrap();
+
     loop {}
 }
