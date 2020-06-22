@@ -1,6 +1,7 @@
 #![no_std]
 
-#![feature(asm)]
+// #![feature(asm)]
+#![allow(dead_code)]
 
 use core::panic::PanicInfo;
 use core::fmt::{self, Write};
@@ -24,6 +25,10 @@ impl<'a> FmtBuffer<'a> {
     fn len(&self) -> usize {
         self.cursor
     }
+
+   fn reset(&mut self) {
+       self.cursor = 0;
+    }
 }
 
 impl fmt::Write for FmtBuffer<'_> {
@@ -37,51 +42,93 @@ impl fmt::Write for FmtBuffer<'_> {
 }
 
 
-fn vga_char(c: char) -> u16 {
-    c as u16 | 0x0c << 8
+struct VgaScreen {
+    x: usize,
+    y: usize,
 }
 
-fn clear_screen() {
-    for x in 0..79 {
-        for y in 0..24 {
-            unsafe { *VGA.offset(y*80 + x) = vga_char(' ') };
+impl VgaScreen {
+    fn new() -> VgaScreen {
+        VgaScreen { x: 0, y: 0 }
+    }
+
+    fn vga_char(c: char) -> u16 {
+        c as u16 | 0x0c << 8
+    }
+
+    fn raw_set(&mut self, x: usize, y: usize, c: u16) {
+        let offset = (y*80 + x) as isize;
+        unsafe { *VGA.offset(offset) = c };
+    }
+
+    fn set(&mut self, c: u16) {
+        self.raw_set(self.x, self.y, c)
+    }
+
+    fn step(&mut self) {
+        self.x += 1;
+        if self.x == 80 {
+            self.x = 0;
+            self.y += 1;
+        }
+        if self.y == 25 {
+            // TODO scroll
+            self.y = 0;
+        }
+    }
+
+    fn clear(&mut self) {
+        let background = Self::vga_char(' ');
+        for x in 0..80 {
+            for y in 0..25 {
+                self.raw_set(x, y, background);
+            }
         }
     }
 }
 
-
-fn print(line: isize, buf: &[u8]) {
-    let offset = line * 80;
-    for (i, c) in buf.iter().enumerate() {
-        let vga_item = vga_char(*c as char);
-        unsafe { *VGA.offset(offset + i as isize) = vga_item };
+impl fmt::Write for VgaScreen {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            match c {
+                '\n' => {
+                    self.x = 0;
+                    self.y += 1;
+                },
+                x @ _ => {
+                    self.set(Self::vga_char(x));
+                    self.step();
+                }
+            }
+        }
+        Ok(())
     }
 }
 
 
 #[no_mangle]
 pub extern "C" fn kernel_main() -> ! {
-    clear_screen();
+
+    let mut v = VgaScreen::new();
+    v.clear();
+    write!(v, "Hello World from\n").unwrap();
+    write!(v, "The Cardinal Operating System\n").unwrap();
 
     let mut buf: [u8; 128] = [0; 128];
+
     let mut b = FmtBuffer::new(&mut buf);
+    write!(b, "Cardinal OS").unwrap();
+    b.reset();
     write!(b, "Hello World {}", 1234).unwrap();
-    let l = b.len();
-    print(3, &buf[..l]);
 
     let mut s = serial::SerialPort::new(0x3f8);
-    write!(s, "Hello World {}\r\n", 1235).unwrap();
+    write!(s, "Hello World from the Cardinal Operating System\r\n").unwrap();
+    write!(s, "Let's test some formatting {}\r\n", 1234).unwrap();
 
     x86::idt_init();
     x86::pic_init();
     x86::unmask_irq(4);
     unsafe { x86::enable_irqs(); }
-
-    // unsafe {
-    //     asm! {
-    //         "int3"
-    //     }
-    // }
 
     loop {}
 }
