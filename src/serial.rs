@@ -1,11 +1,13 @@
 use core::fmt;
 
-use crate::x86::outb;
+use crate::x86::{inb, outb};
 
 pub struct SerialPort {
     port: u16,
 }
 
+const UART_DATA: u16 = 0;
+const UART_INTERRUPT: u16 = 1;
 const UART_BAUD_LOW: u16 = 0;
 const UART_BAUD_HIGH: u16 = 1;
 const UART_FIFO_CTRL: u16 = 2;
@@ -24,6 +26,8 @@ impl SerialPort {
             outb(port + UART_LINE_CTRL, 0x03);
             outb(port + UART_FIFO_CTRL, 0xC7);
             outb(port + UART_MODEM_CTRL, 0x0B);
+
+            outb(port + UART_INTERRUPT, 0x09);
         }
 
         SerialPort { port }
@@ -32,6 +36,18 @@ impl SerialPort {
     // For the case where the port is already initialized
     pub unsafe fn new_raw(port: u16) -> Self {
         SerialPort { port }
+    }
+
+    fn status(&self) -> u8 {
+        unsafe { inb(self.port + UART_LINE_STATUS) }
+    }
+
+    fn data_available(&self) -> bool {
+        self.status() & 0x01 == 0
+    }
+
+    pub fn read_byte(&mut self) -> u8 {
+        unsafe { inb(self.port + UART_DATA) }
     }
 }
 
@@ -43,3 +59,4 @@ impl fmt::Write for SerialPort {
         Ok(())
     }
 }
+

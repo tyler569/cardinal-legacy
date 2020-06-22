@@ -7,6 +7,7 @@ extern "C" {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct InterruptFrame {
     pub ds: u64,
     pub r15: u64,
@@ -38,8 +39,8 @@ const PRIMARY_PIC_DATA: u16 = 0x21;
 const SECONDARY_PIC_COMMAND: u16 = 0xA0;
 const SECONDARY_PIC_DATA: u16 = 0xA1;
 
-pub fn unmask_irq(irq: i32) {
-    if irq > 8 {
+pub fn unmask_irq(irq: usize) {
+    if irq >= 8 {
         let mut mask = unsafe { inb(SECONDARY_PIC_DATA) };
         mask &= !(1 << (irq - 8));
         unsafe { outb(SECONDARY_PIC_DATA, mask) };
@@ -50,8 +51,8 @@ pub fn unmask_irq(irq: i32) {
     }
 }
 
-pub fn mask_irq(irq: i32) {
-    if irq > 8 {
+pub fn mask_irq(irq: usize) {
+    if irq >= 8 {
         let mut mask = unsafe { inb(SECONDARY_PIC_DATA) };
         mask |= 1 << (irq - 8);
         unsafe { outb(SECONDARY_PIC_DATA, mask) };
@@ -77,6 +78,13 @@ pub fn pic_init() {
     }
 
     unmask_irq(2); // cascade irq
+}
+
+pub fn send_eoi(irq: u64) {
+    if irq >= 8 {
+        unsafe { outb(SECONDARY_PIC_COMMAND, 0x20) };
+    }
+    unsafe { outb(PRIMARY_PIC_COMMAND, 0x20) };
 }
 
 

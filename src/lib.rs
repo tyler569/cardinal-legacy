@@ -77,11 +77,11 @@ pub extern "C" fn kernel_main() -> ! {
     x86::unmask_irq(4);
     unsafe { x86::enable_irqs(); }
 
-    unsafe {
-        asm! {
-            "int3"
-        }
-    }
+    // unsafe {
+    //     asm! {
+    //         "int3"
+    //     }
+    // }
 
     loop {}
 }
@@ -94,6 +94,18 @@ pub extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     let interrupt = unsafe { (*frame).interrupt_number };
 
     write!(serial, "interrupt {}\r\n", interrupt).unwrap();
+
+    // let f = unsafe { &*frame };
+    // write!(serial, "{:?}\r\n", f).unwrap();
+
+    if interrupt == 36 {
+        let c = serial.read_byte();
+        write!(serial, "serial read: '{}'\r\n", c as char).unwrap();
+    }
+
+    if interrupt >= 32 && interrupt < 48 {
+        x86::send_eoi(interrupt - 32);
+    }
 }
 
 
