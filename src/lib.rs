@@ -1,11 +1,16 @@
 #![no_std]
 
 // #![feature(asm)]
+
+// I wish I didn't have to do this -- I should see if I can figure out a
+// better solution. Is it really better to delete code that isn't being used?
+// What if I was previously using a data structure and pulled back from it
+// temporarily? Maybe I can just annotate one data structure or something.
 #![allow(dead_code)]
 
-use core::panic::PanicInfo;
-use core::fmt::{self, Write};
 use core::iter::Iterator;
+use core::fmt::{self, Write};
+use core::panic::PanicInfo;
 
 mod serial;
 mod x86;
@@ -109,7 +114,6 @@ impl fmt::Write for VgaScreen {
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn kernel_main() -> ! {
 
@@ -129,6 +133,9 @@ pub extern "C" fn kernel_main() -> ! {
     let mut s = serial::SerialPort::new(0x3f8);
     write!(s, "Hello World from the Cardinal Operating System\r\n").unwrap();
     write!(s, "Let's test some formatting {}\r\n", 1234).unwrap();
+
+    let a = |x| x + 1;
+    write!(v, "{}\n", a(100)).unwrap();
 
     x86::idt_init();
     x86::pic_init();
