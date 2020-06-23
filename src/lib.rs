@@ -15,7 +15,9 @@ use core::panic::PanicInfo;
 mod serial;
 mod x86;
 
-const VGA: *mut u16 = 0xFFFF_FFFF_800B_8000 as *mut u16;
+const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
+
+const VGA_BUFFER: *mut u16 = (LOAD_OFFSET + 0xB8000) as *mut u16;
 
 struct FmtBuffer<'a> {
     x: &'a mut [u8],
@@ -63,7 +65,7 @@ impl VgaScreen {
 
     fn raw_set(&mut self, x: usize, y: usize, c: u16) {
         let offset = (y*80 + x) as isize;
-        unsafe { *VGA.offset(offset) = c };
+        unsafe { *VGA_BUFFER.offset(offset) = c };
     }
 
     fn set(&mut self, c: u16) {
@@ -137,7 +139,7 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     write!(v, "{}\n", a(100)).unwrap();
 
     let boot_info = unsafe {
-        multiboot2::load_with_offset(multiboot_info, 0xFFFF_FFFF_8000_0000)
+        multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET)
     };
 
     if let Some(boot_loader_name_tag) = boot_info.boot_loader_name_tag() {
