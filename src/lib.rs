@@ -115,8 +115,7 @@ impl fmt::Write for VgaScreen {
 }
 
 #[no_mangle]
-pub extern "C" fn kernel_main() -> ! {
-
+pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> ! {
     let mut v = VgaScreen::new();
     v.clear();
     write!(v, "Hello World from\n").unwrap();
@@ -136,6 +135,14 @@ pub extern "C" fn kernel_main() -> ! {
 
     let a = |x| x + 1;
     write!(v, "{}\n", a(100)).unwrap();
+
+    let boot_info = unsafe {
+        multiboot2::load_with_offset(multiboot_info, 0xFFFF_FFFF_8000_0000)
+    };
+
+    if let Some(boot_loader_name_tag) = boot_info.boot_loader_name_tag() {
+        write!(s, "bootloader is {}\r\n", boot_loader_name_tag.name()).unwrap();
+    }
 
     x86::idt_init();
     x86::pic_init();

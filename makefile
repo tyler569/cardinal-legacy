@@ -18,7 +18,7 @@ all: cardinal.iso
 %.o: %.asm
 	nasm -felf64 -o $@ $<
 
-$(RUSTLIB): $(RUSTSRC)
+$(RUSTLIB): $(RUSTSRC) Cargo.toml
 	cargo xbuild
 
 cardinal.elf: $(ASMOBJ) $(RUSTLIB)
