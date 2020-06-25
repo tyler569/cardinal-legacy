@@ -17,7 +17,7 @@ pub struct Mutex<T: ?Sized> {
 }
 
 impl<T> Mutex<T> {
-    pub fn new(value: T) -> Self {
+    pub const fn new(value: T) -> Self {
         Mutex {
             lock: atomic::AtomicUsize::new(0),
             value: UnsafeCell::new(value),
@@ -47,11 +47,17 @@ impl<T: ?Sized> Mutex<T> {
     }
 }
 
+unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
+unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
+
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> MutexGuard<'mutex, T> {
         MutexGuard { lock }
     }
 }
+
+impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
+unsafe impl <T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
