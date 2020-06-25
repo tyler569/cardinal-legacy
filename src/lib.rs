@@ -1,6 +1,7 @@
 #![no_std]
 
-// #![feature(asm)]
+#![feature(alloc_error_handler)]
+#![feature(negative_impls)]
 
 // I wish I didn't have to do this -- I should see if I can figure out a
 // better solution. Is it really better to delete code that isn't being used?
@@ -13,6 +14,12 @@ use core::fmt::{self, Write};
 
 #[cfg(target_os = "none")]
 use core::panic::PanicInfo;
+
+extern crate alloc;
+use alloc::boxed::Box;
+
+#[cfg(target_os = "none")]
+mod allocator;
 
 mod serial;
 mod sync;
@@ -153,6 +160,8 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     x86::pic_init();
     x86::unmask_irq(4);
     unsafe { x86::enable_irqs(); }
+
+    Box::new(10);
 
     loop {}
 }
