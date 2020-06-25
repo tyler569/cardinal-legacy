@@ -1,5 +1,3 @@
-#![no_std]
-
 use core::sync::atomic::{self, Ordering};
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};

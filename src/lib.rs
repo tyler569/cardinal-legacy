@@ -10,9 +10,12 @@
 
 use core::iter::Iterator;
 use core::fmt::{self, Write};
+
+#[cfg(target_os = "none")]
 use core::panic::PanicInfo;
 
 mod serial;
+mod sync;
 mod x86;
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
@@ -177,6 +180,7 @@ pub extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
 }
 
 
+#[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     let mut serial = unsafe { serial::SerialPort::new_raw(0x3f8) };

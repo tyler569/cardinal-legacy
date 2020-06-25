@@ -11,7 +11,7 @@ ASMOBJ := $(patsubst %.asm,%.o,$(ASMSRC))
 OBJECTS := $(ASMOBJ)
 RUSTLIB := target/x86_64-cardinal/$(BUILDMODE)/libcardinal.a
 
-.PHONY: all clean
+.PHONY: all clean test
 
 all: cardinal.iso
 
@@ -36,3 +36,5 @@ clean:
 	rm -f cardinal.elf
 	rm -f nimos.iso
 
+test: all
+	cargo test --target x86_64-unknown-linux-gnu
