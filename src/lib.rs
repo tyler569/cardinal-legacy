@@ -28,9 +28,7 @@ use serial::SerialPort;
 use sync::Mutex;
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
-
 const VGA_BUFFER: *mut u16 = (LOAD_OFFSET + 0xB8000) as *mut u16;
-
 
 pub struct VgaScreen {
     x: usize,
@@ -139,6 +137,11 @@ macro_rules! vprintln {
 }
 
 
+fn return_a_closure(x: i32) -> Box<dyn FnOnce(i32) -> i32> {
+    Box::new(move |a| a + x)
+}
+
+
 #[no_mangle]
 pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> ! {
     GLOBAL_SERIAL.lock().init();
@@ -166,6 +169,9 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     x86::pic_init();
     x86::unmask_irq(4);
     unsafe { x86::enable_irqs(); }
+
+    let closed_fn = return_a_closure(10);
+    println!("Call a closure: {}", closed_fn(10));
 
     loop {}
 }
