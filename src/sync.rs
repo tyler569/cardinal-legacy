@@ -44,6 +44,13 @@ impl<T: ?Sized> Mutex<T> {
             Err(_) => Err(()),
         }
     }
+
+    pub fn into_inner(self) -> T
+    where
+        T: Sized,
+    {
+        self.value.into_inner()
+    }
 }
 
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
@@ -82,6 +89,9 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
 mod tests {
     use super::*;
 
+    use core::sync::atomic::{AtomicUsize, Ordering};
+    use alloc::sync::Arc;
+
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
@@ -110,5 +120,48 @@ mod tests {
         let m = Mutex::new(0);
         let _g1 = m.lock();
         let _g2 = m.lock();
+    }
+
+    // Several tests adopted from Rust standard library Mutex tests
+    // https://doc.rust-lang.org/src/std/sync/mutex.rs.html
+
+    #[test]
+    fn smoke() {
+        let m = Mutex::new(());
+        drop(m.lock());
+        drop(m.lock());
+    }
+
+    #[derive(Eq, PartialEq, Debug)]
+    struct NonCopy(i32);
+
+    #[test]
+    fn try_lock() {
+        let m = Mutex::new(());
+        *m.try_lock().unwrap() = ();
+    }
+
+    #[test]
+    fn test_into_inner() {
+        let m = Mutex::new(NonCopy(10));
+        assert_eq!(m.into_inner(), NonCopy(10));
+    }
+
+    #[test]
+    fn test_into_inner_drop() {
+        struct Foo(Arc<AtomicUsize>);
+        impl Drop for Foo {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+        let num_drops = Arc::new(AtomicUsize::new(0));
+        let m = Mutex::new(Foo(num_drops.clone()));
+        assert_eq!(num_drops.load(Ordering::SeqCst), 0);
+        {
+            let _inner = m.into_inner();
+            assert_eq!(num_drops.load(Ordering::SeqCst), 0);
+        }
+        assert_eq!(num_drops.load(Ordering::SeqCst), 1);
     }
 }
