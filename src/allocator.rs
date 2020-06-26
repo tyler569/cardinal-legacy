@@ -1,4 +1,3 @@
-
 use alloc::alloc::{GlobalAlloc, Layout};
 
 use crate::sync::Mutex;
@@ -21,7 +20,7 @@ unsafe impl GlobalAlloc for Mutex<EarlyHeap> {
         let mut alloc = self.lock();
         let ptr = EARLY_HEAP.as_mut_ptr();
         let new_offset = alloc.index + layout.size();
-        let ret = ptr.offset(alloc.index as isize);
+        let ret = ptr.add(alloc.index);
         alloc.index = new_offset;
         ret
     }

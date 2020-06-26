@@ -1,8 +1,6 @@
 #![no_std]
-
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]
-
 // I wish I didn't have to do this -- I should see if I can figure out a
 // better solution. Is it really better to delete code that isn't being used?
 // What if I was previously using a data structure and pulled back from it
@@ -45,7 +43,7 @@ impl VgaScreen {
     }
 
     fn raw_set(&mut self, x: usize, y: usize, c: u16) {
-        let offset = (y*80 + x) as isize;
+        let offset = (y * 80 + x) as isize;
         unsafe { *VGA_BUFFER.offset(offset) = c };
     }
 
@@ -82,12 +80,12 @@ impl fmt::Write for VgaScreen {
                 '\n' => {
                     self.x = 0;
                     self.y += 1;
-                },
+                }
                 '\t' => {
                     self.x += 7;
                     self.x &= !7;
-                },
-                x @ _ => {
+                }
+                x => {
                     self.set(Self::vga_char(x));
                     self.step();
                 }
@@ -136,11 +134,9 @@ macro_rules! vprintln {
     ($fmt:expr, $($arg:tt)*) => ($crate::vprint!(concat!($fmt, "\n"), $($arg)*));
 }
 
-
 fn return_a_closure(x: i32) -> Box<dyn FnOnce(i32) -> i32> {
     Box::new(move |a| a + x)
 }
-
 
 #[no_mangle]
 pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> ! {
@@ -157,9 +153,7 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     let a = |x| x + 1;
     println!("Call a lambda: {}", a(10));
 
-    let boot_info = unsafe {
-        multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET)
-    };
+    let boot_info = unsafe { multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET) };
 
     if let Some(boot_loader_name_tag) = boot_info.boot_loader_name_tag() {
         println!("bootloader is: {}", boot_loader_name_tag.name());
@@ -168,7 +162,9 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     x86::idt_init();
     x86::pic_init();
     x86::unmask_irq(4);
-    unsafe { x86::enable_irqs(); }
+    unsafe {
+        x86::enable_irqs();
+    }
 
     let closed_fn = return_a_closure(10);
     println!("Call a closure: {}", closed_fn(10));
@@ -176,12 +172,9 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     loop {}
 }
 
-
 #[no_mangle]
-pub extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
-    let mut serial = unsafe { serial::SerialPort::new_raw(0x3f8) };
-
-    let interrupt = unsafe { (*frame).interrupt_number };
+pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
+    let interrupt = (*frame).interrupt_number;
 
     println!("interrupt: {}", interrupt);
 
@@ -189,7 +182,7 @@ pub extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     // write!(serial, "{:?}\r\n", f).unwrap();
 
     if interrupt == 36 {
-        let c = serial.read_byte();
+        let c = GLOBAL_SERIAL.lock().read_byte();
         println!("serial read: {}\n", c as char);
     }
 

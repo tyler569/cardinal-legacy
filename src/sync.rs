@@ -1,6 +1,6 @@
-use core::sync::atomic::{self, Ordering};
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
+use core::sync::atomic::{self, Ordering};
 
 /// Syncronization routines for the Cardinal Operating system.
 /// This is mostly based on the Rust standard library std::sync::Mutex, but
@@ -36,11 +36,10 @@ impl<T: ?Sized> Mutex<T> {
     }
 
     pub fn try_lock(&self) -> Result<MutexGuard<'_, T>, ()> {
-        match self.lock.compare_exchange(
-            0, 1, 
-            Ordering::Relaxed,
-            Ordering::Relaxed
-        ) {
+        match self
+            .lock
+            .compare_exchange(0, 1, Ordering::Relaxed, Ordering::Relaxed)
+        {
             Ok(_) => Ok(unsafe { MutexGuard::new(self) }),
             Err(_) => Err(()),
         }
@@ -57,7 +56,7 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
 }
 
 impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
-unsafe impl <T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
+unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
@@ -73,12 +72,11 @@ impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
     }
 }
 
-impl <T: ?Sized> Drop for MutexGuard<'_, T> {
+impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     fn drop(&mut self) {
         self.lock.lock.store(0, Ordering::Relaxed);
     }
 }
-
 
 #[cfg(test)]
 mod tests {

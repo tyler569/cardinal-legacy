@@ -87,8 +87,7 @@ pub fn send_eoi(irq: u64) {
     unsafe { outb(PRIMARY_PIC_COMMAND, 0x20) };
 }
 
-
-extern {
+extern "C" {
     #[link_name = "idt"]
     static mut IDT: [u64; 1024];
 
@@ -147,8 +146,8 @@ extern {
 }
 
 fn raw_set_idt_gate(irq: usize, handler: u64, flags: u64, cs: u64, ist: u64) {
-    let gate = unsafe { &mut IDT[irq*2 .. irq*2 + 2] };
-    
+    let gate = unsafe { &mut IDT[irq * 2..irq * 2 + 2] };
+
     let func = handler;
     let func_low = func & 0xFFFF;
     let func_mid = (func >> 16) & 0xFFFF;
@@ -158,12 +157,14 @@ fn raw_set_idt_gate(irq: usize, handler: u64, flags: u64, cs: u64, ist: u64) {
     gate[1] = func_high;
 }
 
-fn set_idt_gate(irq: usize, handler: unsafe extern fn()) {
+fn set_idt_gate(irq: usize, handler: unsafe extern "C" fn()) {
     let rpl = 0; // 3 on syscall
     let gdt_selector = 8;
     let gate_type = 0xE;
     let flags = 0x80 | rpl << 5 | gate_type;
 
+    // This is a defined bit structure and needs to be u64.
+    #[allow(clippy::fn_to_numeric_cast)]
     raw_set_idt_gate(irq, handler as u64, flags, gdt_selector, 0);
 }
 
@@ -221,4 +222,3 @@ pub fn idt_init() {
     // set_idt_gate(128, isr_syscall);
     set_idt_gate(130, isr_panic);
 }
-
