@@ -9,7 +9,6 @@
 // temporarily? Maybe I can just annotate one data structure or something.
 #![allow(dead_code)]
 
-use core::iter::Iterator;
 use core::fmt::{self, Write};
 
 #[cfg(target_os = "none")]
@@ -25,47 +24,21 @@ mod serial;
 mod sync;
 mod x86;
 
+use serial::SerialPort;
+use sync::Mutex;
+
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
 
 const VGA_BUFFER: *mut u16 = (LOAD_OFFSET + 0xB8000) as *mut u16;
 
-struct FmtBuffer<'a> {
-    x: &'a mut [u8],
-    cursor: usize,
-}
 
-impl<'a> FmtBuffer<'a> {
-    fn new(buf: &'a mut [u8]) -> FmtBuffer<'a> {
-        FmtBuffer { x: buf, cursor: 0 }
-    }
-
-    fn len(&self) -> usize {
-        self.cursor
-    }
-
-   fn reset(&mut self) {
-       self.cursor = 0;
-    }
-}
-
-impl fmt::Write for FmtBuffer<'_> {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        for (i, c) in s.chars().enumerate() {
-            self.x[self.cursor + i] = c as u8;
-        }
-        self.cursor += s.len();
-        Ok(())
-    }
-}
-
-
-struct VgaScreen {
+pub struct VgaScreen {
     x: usize,
     y: usize,
 }
 
 impl VgaScreen {
-    fn new() -> VgaScreen {
+    pub const fn new() -> VgaScreen {
         VgaScreen { x: 0, y: 0 }
     }
 
@@ -126,42 +99,73 @@ impl fmt::Write for VgaScreen {
     }
 }
 
+pub static GLOBAL_VGA: Mutex<VgaScreen> = Mutex::new(VgaScreen::new());
+pub static GLOBAL_SERIAL: Mutex<SerialPort> = Mutex::new(SerialPort::new(0x3f8));
+
+pub fn serial_print(args: fmt::Arguments) {
+    GLOBAL_SERIAL.lock().write_fmt(args).unwrap();
+}
+
+pub fn video_print(args: fmt::Arguments) {
+    GLOBAL_VGA.lock().write_fmt(args).unwrap();
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => {
+        $crate::serial_print(format_args!($($arg)*));
+    };
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\r\n"));
+    ($fmt:expr) => ($crate::print!(concat!($fmt, "\r\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\r\n"), $($arg)*));
+}
+
+#[macro_export]
+macro_rules! vprint {
+    ($($arg:tt)*) => {
+        $crate::video_print(format_args!($($arg)*));
+    };
+}
+
+#[macro_export]
+macro_rules! vprintln {
+    () => ($crate::vprint!("\n"));
+    ($fmt:expr) => ($crate::vprint!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::vprint!(concat!($fmt, "\n"), $($arg)*));
+}
+
+
 #[no_mangle]
 pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> ! {
-    let mut v = VgaScreen::new();
-    v.clear();
-    write!(v, "Hello World from\n").unwrap();
-    write!(v, "The Cardinal Operating System\n").unwrap();
-    write!(v, "123\t12\t1\t\n").unwrap();
+    GLOBAL_SERIAL.lock().init();
+    GLOBAL_VGA.lock().clear();
 
-    let mut buf: [u8; 128] = [0; 128];
+    vprintln!("Hello World from");
+    vprintln!("The Cardinal Operating System");
+    vprintln!("123\t12\t1\t1234\t1");
 
-    let mut b = FmtBuffer::new(&mut buf);
-    write!(b, "Cardinal OS").unwrap();
-    b.reset();
-    write!(b, "Hello World {}", 1234).unwrap();
-
-    let mut s = serial::SerialPort::new(0x3f8);
-    write!(s, "Hello World from the Cardinal Operating System\r\n").unwrap();
-    write!(s, "Let's test some formatting {}\r\n", 1234).unwrap();
+    println!("Hello World from the Cardinal Operating System");
+    println!("Let's test some formatting {}", 1234);
 
     let a = |x| x + 1;
-    write!(v, "{}\n", a(100)).unwrap();
+    println!("Call a lambda: {}", a(10));
 
     let boot_info = unsafe {
         multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET)
     };
 
     if let Some(boot_loader_name_tag) = boot_info.boot_loader_name_tag() {
-        write!(s, "bootloader is {}\r\n", boot_loader_name_tag.name()).unwrap();
+        println!("bootloader is: {}", boot_loader_name_tag.name());
     }
 
     x86::idt_init();
     x86::pic_init();
     x86::unmask_irq(4);
     unsafe { x86::enable_irqs(); }
-
-    Box::new(10);
 
     loop {}
 }
@@ -173,14 +177,14 @@ pub extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
 
     let interrupt = unsafe { (*frame).interrupt_number };
 
-    write!(serial, "interrupt {}\r\n", interrupt).unwrap();
+    println!("interrupt: {}", interrupt);
 
     // let f = unsafe { &*frame };
     // write!(serial, "{:?}\r\n", f).unwrap();
 
     if interrupt == 36 {
         let c = serial.read_byte();
-        write!(serial, "serial read: '{}'\r\n", c as char).unwrap();
+        println!("serial read: {}\n", c as char);
     }
 
     if interrupt >= 32 && interrupt < 48 {
@@ -188,13 +192,12 @@ pub extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     }
 }
 
-
 #[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     let mut serial = unsafe { serial::SerialPort::new_raw(0x3f8) };
 
-    write!(serial, "{}", panic_info).unwrap();
+    write!(serial, "{}\r\n", panic_info).unwrap();
 
     loop {}
 }

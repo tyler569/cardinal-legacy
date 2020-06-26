@@ -17,20 +17,22 @@ const UART_LINE_STATUS: u16 = 5;
 const UART_MODEM_STATUS: u16 = 6;
 
 impl SerialPort {
-    pub fn new(port: u16) -> Self {
-        unsafe {
-            outb(port + UART_BAUD_HIGH, 0x00);
-            outb(port + UART_LINE_CTRL, 0x80);
-            outb(port + UART_BAUD_LOW , 0x03);
-            outb(port + UART_BAUD_HIGH, 0x00);
-            outb(port + UART_LINE_CTRL, 0x03);
-            outb(port + UART_FIFO_CTRL, 0xC7);
-            outb(port + UART_MODEM_CTRL, 0x0B);
-
-            outb(port + UART_INTERRUPT, 0x09);
-        }
-
+    pub const fn new(port: u16) -> Self {
         SerialPort { port }
+    }
+
+    pub fn init(&mut self) {
+        unsafe {
+            outb(self.port + UART_BAUD_HIGH, 0x00);
+            outb(self.port + UART_LINE_CTRL, 0x80);
+            outb(self.port + UART_BAUD_LOW, 0x03);
+            outb(self.port + UART_BAUD_HIGH, 0x00);
+            outb(self.port + UART_LINE_CTRL, 0x03);
+            outb(self.port + UART_FIFO_CTRL, 0xC7);
+            outb(self.port + UART_MODEM_CTRL, 0x0B);
+
+            outb(self.port + UART_INTERRUPT, 0x09);
+        }
     }
 
     // For the case where the port is already initialized
