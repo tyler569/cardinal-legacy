@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]
+#![feature(ffi_returns_twice)]
 // I wish I didn't have to do this -- I should see if I can figure out a
 // better solution. Is it really better to delete code that isn't being used?
 // What if I was previously using a data structure and pulled back from it
@@ -24,6 +25,7 @@ mod x86;
 
 use serial::SerialPort;
 use sync::Mutex;
+use x86::{long_jump, set_jump, JmpBuf};
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
 const VGA_BUFFER: *mut u16 = (LOAD_OFFSET + 0xB8000) as *mut u16;
@@ -138,6 +140,10 @@ fn return_a_closure(x: i32) -> Box<dyn FnOnce(i32) -> i32> {
     Box::new(move |a| a + x)
 }
 
+unsafe fn jump_back(buffer: &JmpBuf) -> ! {
+    long_jump(buffer, 0);
+}
+
 #[no_mangle]
 pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> ! {
     GLOBAL_SERIAL.lock().init();
@@ -169,6 +175,16 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     let closed_fn = return_a_closure(10);
     println!("Call a closure: {}", closed_fn(10));
 
+    let mut some_jump_buf = JmpBuf::new();
+    println!("buf: {:?}", some_jump_buf);
+    let is_return = unsafe { set_jump(&mut some_jump_buf) };
+    println!("buf: {:?}", some_jump_buf);
+    println!("set_jump returned: {}", is_return);
+
+    if is_return == 0 {
+        unsafe { jump_back(&some_jump_buf) };
+    }
+
     loop {}
 }
 
@@ -188,6 +204,10 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
 
     if interrupt >= 32 && interrupt < 48 {
         x86::send_eoi(interrupt - 32);
+    }
+
+    if interrupt == 14 {
+        panic!("Page fault, not handled");
     }
 }
 

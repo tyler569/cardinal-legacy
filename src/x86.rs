@@ -34,6 +34,40 @@ pub struct InterruptFrame {
     pub ss: u64,
 }
 
+#[repr(C)]
+#[derive(Debug)]
+pub struct JmpBuf {
+    bx: u64,
+    bp: u64,
+    r12: u64,
+    r13: u64,
+    r14: u64,
+    r15: u64,
+    sp: u64,
+    ip: u64,
+}
+
+impl JmpBuf {
+    pub fn new() -> JmpBuf {
+        JmpBuf {
+            bx: 0,
+            bp: 0,
+            r12: 0,
+            r13: 0,
+            r14: 0,
+            r15: 0,
+            sp: 0,
+            ip: 0,
+        }
+    }
+}
+
+extern "C" {
+    #[ffi_returns_twice]
+    pub fn set_jump(buf: &mut JmpBuf) -> isize;
+    pub fn long_jump(buf: &JmpBuf, value: isize) -> !;
+}
+
 const PRIMARY_PIC_COMMAND: u16 = 0x20;
 const PRIMARY_PIC_DATA: u16 = 0x21;
 const SECONDARY_PIC_COMMAND: u16 = 0xA0;

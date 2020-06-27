@@ -89,8 +89,8 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
 mod tests {
     use super::*;
 
-    use core::sync::atomic::{AtomicUsize, Ordering};
     use alloc::sync::Arc;
+    use core::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn it_works() {
