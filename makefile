@@ -36,5 +36,5 @@ clean:
 	rm -f cardinal.elf
 	rm -f nimos.iso
 
-test: all
+test:
 	cargo test --target x86_64-unknown-linux-gnu
