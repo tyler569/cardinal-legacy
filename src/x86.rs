@@ -9,56 +9,47 @@ extern "C" {
 #[repr(C)]
 #[derive(Debug)]
 pub struct InterruptFrame {
-    pub ds: u64,
-    pub r15: u64,
-    pub r14: u64,
-    pub r13: u64,
-    pub r12: u64,
-    pub r11: u64,
-    pub r10: u64,
-    pub r9: u64,
-    pub r8: u64,
-    pub bp: u64,
-    pub di: u64,
-    pub si: u64,
-    pub dx: u64,
-    pub bx: u64,
-    pub cx: u64,
-    pub ax: u64,
-    pub interrupt_number: u64,
-    pub error_code: u64,
-    pub ip: u64,
-    pub cs: u64,
-    pub flags: u64,
-    pub sp: u64,
-    pub ss: u64,
+    pub ds: usize,
+    pub r15: usize,
+    pub r14: usize,
+    pub r13: usize,
+    pub r12: usize,
+    pub r11: usize,
+    pub r10: usize,
+    pub r9: usize,
+    pub r8: usize,
+    pub bp: usize,
+    pub di: usize,
+    pub si: usize,
+    pub dx: usize,
+    pub bx: usize,
+    pub cx: usize,
+    pub ax: usize,
+    pub interrupt_number: usize,
+    pub error_code: usize,
+    pub ip: usize,
+    pub cs: usize,
+    pub flags: usize,
+    pub sp: usize,
+    pub ss: usize,
 }
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct JmpBuf {
-    bx: u64,
-    bp: u64,
-    r12: u64,
-    r13: u64,
-    r14: u64,
-    r15: u64,
-    sp: u64,
-    ip: u64,
+    pub bx: usize,
+    pub bp: usize,
+    pub r12: usize,
+    pub r13: usize,
+    pub r14: usize,
+    pub r15: usize,
+    pub sp: usize,
+    pub ip: usize,
 }
 
 impl JmpBuf {
     pub fn new() -> JmpBuf {
-        JmpBuf {
-            bx: 0,
-            bp: 0,
-            r12: 0,
-            r13: 0,
-            r14: 0,
-            r15: 0,
-            sp: 0,
-            ip: 0,
-        }
+        Default::default()
     }
 }
 
@@ -114,7 +105,30 @@ pub fn pic_init() {
     unmask_irq(2); // cascade irq
 }
 
-pub fn send_eoi(irq: u64) {
+const TIMER_CH0: u16 = 0x40;
+const TIMER_CMD: u16 = 0x43;
+
+const TIMER_CHANNEL_0: u8 = 0;
+const TIMER_ACCESS_HILO: u8 = 0x30;
+const TIMER_MODE_3: u8 = 0x06; // square wave
+
+
+pub fn timer_init(hertz: usize) {
+    let mut divisor = 1_193_182 / hertz;
+    if divisor > 65535 {
+        // 0 represents 65536 and is the largest possible divisor,
+        // giving 18.2Hz
+        divisor = 0;
+    }
+
+    unsafe {
+        outb(TIMER_CMD, TIMER_CHANNEL_0 | TIMER_ACCESS_HILO | TIMER_MODE_3);
+        outb(TIMER_CH0, divisor as u8);
+        outb(TIMER_CH0, (divisor >> 8) as u8);
+    }
+}
+
+pub fn send_eoi(irq: usize) {
     if irq >= 8 {
         unsafe { outb(SECONDARY_PIC_COMMAND, 0x20) };
     }

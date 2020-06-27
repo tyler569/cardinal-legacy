@@ -19,6 +19,7 @@ use alloc::boxed::Box;
 #[cfg(target_os = "none")]
 mod allocator;
 
+mod thread;
 mod serial;
 mod sync;
 mod x86;
@@ -167,23 +168,30 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
 
     x86::idt_init();
     x86::pic_init();
+    x86::unmask_irq(0);
     x86::unmask_irq(4);
-    unsafe {
-        x86::enable_irqs();
-    }
 
     let closed_fn = return_a_closure(10);
     println!("Call a closure: {}", closed_fn(10));
 
     let mut some_jump_buf = JmpBuf::new();
-    println!("buf: {:?}", some_jump_buf);
     let is_return = unsafe { set_jump(&mut some_jump_buf) };
-    println!("buf: {:?}", some_jump_buf);
     println!("set_jump returned: {}", is_return);
 
     if is_return == 0 {
         unsafe { jump_back(&some_jump_buf) };
     }
+
+    thread::spawn(|| {
+        println!("This is happening in a thread\n");
+        thread::exit();
+    });
+
+    unsafe {
+        x86::enable_irqs();
+    }
+
+    // thread::sched_yield();
 
     loop {}
 }
@@ -192,14 +200,18 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
 pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     let interrupt = (*frame).interrupt_number;
 
-    println!("interrupt: {}", interrupt);
+    // println!("interrupt: {}", interrupt);
 
     // let f = unsafe { &*frame };
     // write!(serial, "{:?}\r\n", f).unwrap();
 
     if interrupt == 36 {
         let c = GLOBAL_SERIAL.lock().read_byte();
-        println!("serial read: {}\n", c as char);
+        println!("serial read: {}", c as char);
+    }
+
+    if interrupt == 32 {
+        // thread::timeout();
     }
 
     if interrupt >= 32 && interrupt < 48 {
