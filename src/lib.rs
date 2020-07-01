@@ -16,12 +16,13 @@ use core::panic::PanicInfo;
 extern crate alloc;
 use alloc::boxed::Box;
 
+pub use spin as sync;
+
 #[cfg(target_os = "none")]
 mod allocator;
 
 mod thread;
 mod serial;
-mod sync;
 mod x86;
 
 use serial::SerialPort;

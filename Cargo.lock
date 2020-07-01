@@ -11,6 +11,7 @@ name = "cardinal"
 version = "0.1.0"
 dependencies = [
  "multiboot2",
+ "spin",
 ]
 
 [[package]]
@@ -21,3 +22,9 @@ checksum = "24835c1bfe38142c78aa2d00769b0d76239c4b583d92f817e6e0a4f3631f40d6"
 dependencies = [
  "bitflags",
 ]
+
+[[package]]
+name = "spin"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"

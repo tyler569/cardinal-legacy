@@ -1,22 +1,17 @@
 
-use crate::sync::Mutex;
 use crate::x86::{JmpBuf};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use spin::{Mutex, RwLock};
 
-
-// TODO!!
-// This should be behind an RwLock or similar, and the Threads should have
-// interior mutability! - You should be able to Read the vec and Write the
-// Threads at the same time, as long as noone is mutating the same threads.
-// This is just a bad starting point.
-static THREADS: Mutex<Vec<Option<Thread>>> = Mutex::new(Vec::new());
+static THREADS: RwLock<Vec<RwLock<Option<Thread>>>> = RwLock::new(Vec::new());
 static ID: Mutex<i32> = Mutex::new(1);
 static RUNNING_THREAD_ID: Mutex<usize> = Mutex::new(1);
 
 pub struct Thread {
     id: i32,
     should_run: bool,
+    start: Box<dyn Fn() + Send + Sync>,
     // stack_pointer: *const u8,
     context: JmpBuf,
 }
@@ -33,38 +28,63 @@ fn new_stack_pointer() -> usize {
     unsafe { ptr.add(STACK_SIZE) as usize }
 }
 
+fn start_thread() {
+    // bluh
+    let threads = THREADS.read();
+    let running_id = *RUNNING_THREAD_ID.lock();
+    let running_rw = &threads[running_id];
+    let running_guard = running_rw.read();
+    let running_opt = &*running_guard;
+    if let Some(running) = running_opt.as_ref() {
+        (running.start)();
+    } else {
+        panic!("running thread does not exist");
+    }
+}
+
 // TODO! JoinHandle?
-pub fn spawn(f: fn()) {
-    let mut threads = THREADS.lock();
+pub fn spawn<F: Fn() + Send + Sync + 'static>(f: F) {
+    let mut threads = THREADS.write();
     let new_id;
     {
         let mut id = ID.lock();
         new_id = *id;
         *id += 1;
     }
-    threads.push(Some(Thread {
+    let new_thread = RwLock::new(Some(Thread {
         id: new_id,
         should_run: true,
+        start: Box::new(f),
         context: JmpBuf {
             sp: new_stack_pointer(),
-            ip: f as usize,
+            ip: start_thread as usize,
             ..Default::default()
         },
     }));
+    threads.push(new_thread)
 }
 
 pub fn exit() {
-    let mut threads = THREADS.lock();
-    let running = RUNNING_THREAD_ID.lock();
-    threads[*running] = None;
-    // free(stack_pointer)
+    let threads = THREADS.read();
+    let running_id = RUNNING_THREAD_ID.lock();
+    let mut running = threads[*running_id].write();
+    *running = None;
+}
+
+
+pub fn switch() {
+//     let threads = THREADS.read();
+//     for thread_rw in threads {
+//         let thread_guard = thread_rw.read();
+//         let thread_opt = &*thread_guard;
+//         if let Some(thread) = thread_opt.as_ref() {
+//             // problem number one:
+//             // this is going to long jump out of borrows.
+//         }
+//     }
 }
 
 /*
-pub fn switch() {
-    
-}
-
 pub fn scheduler() {
 
 }
