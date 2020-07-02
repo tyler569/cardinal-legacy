@@ -2,6 +2,7 @@
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]
 #![feature(ffi_returns_twice)]
+#![feature(const_btree_new)]
 // I wish I didn't have to do this -- I should see if I can figure out a
 // better solution. Is it really better to delete code that isn't being used?
 // What if I was previously using a data structure and pulled back from it
@@ -183,10 +184,7 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
         unsafe { jump_back(&some_jump_buf) };
     }
 
-    thread::spawn(|| {
-        println!("This is happening in a thread\n");
-        thread::exit();
-    });
+    thread::GLOBAL_THREAD_SET.write().spawn(|| { println!("this is a thread"); });
 
     unsafe {
         x86::enable_irqs();

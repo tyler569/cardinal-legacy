@@ -1,91 +1,82 @@
 
 use crate::x86::{JmpBuf};
+use core::pin::Pin;
 use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
-use spin::{Mutex, RwLock};
+use spin::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-static THREADS: RwLock<Vec<RwLock<Option<Thread>>>> = RwLock::new(Vec::new());
-static ID: Mutex<i32> = Mutex::new(1);
-static RUNNING_THREAD_ID: Mutex<usize> = Mutex::new(1);
+pub static GLOBAL_THREAD_SET: RwLock<ThreadSet> = RwLock::new(ThreadSet::new());
+
+pub struct ThreadError;
+
+#[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
+pub struct ThreadId(usize);
+
+type Result = ::core::result::Result<ThreadId, ThreadError>;
+
+pub struct ThreadSet {
+    pub threads: BTreeMap<ThreadId,
+        Pin<Arc<RwLock<Thread>>>
+    >,
+    next_id: ThreadId,
+}
+
+impl ThreadSet {
+    pub const fn new() -> ThreadSet {
+        ThreadSet {
+            threads: BTreeMap::new(),
+            next_id: ThreadId(1),
+        }
+    }
+
+    pub fn spawn(&mut self, start_fn: fn()) -> Result {
+        let stack = Box::new([0; 2048]);
+        let mut context = JmpBuf::new();
+        context.sp = stack.as_ptr() as usize + 2048;
+        context.bp = context.sp;
+        context.ip = thread_entry as usize;
+        let id = self.next_id;
+
+        let mut new_thread = Arc::pin(RwLock::new(Thread {
+            id,
+            context,
+            start_fn,
+            stack,
+            state: ThreadState::Running,
+        }));
+
+        self.threads.insert(self.next_id, new_thread);
+
+        self.next_id = ThreadId(self.next_id.0 + 1);
+        Ok(id)
+    }
+}
+
+fn thread_entry() {
+    // thread.start_fn();
+    exit(); // or panic! -- not sure which is more correct.
+}
+
+fn exit() {
+    panic!();
+}
+
+pub struct ThreadGroup {
+    pub threads: Vec<Weak<RwLock<Thread>>>,
+}
+
+pub enum ThreadState {
+    Running,
+    Stopped,
+}
 
 pub struct Thread {
-    id: i32,
-    should_run: bool,
-    start: Box<dyn Fn() + Send + Sync>,
-    // stack_pointer: *const u8,
-    context: JmpBuf,
+    pub id: ThreadId,
+    pub context: JmpBuf,
+    pub start_fn: fn(),
+    pub stack: Box<[u8]>,
+    pub state: ThreadState,
 }
 
-pub struct JoinHandle<T> {
-    idk: T,
-}
-
-fn new_stack_pointer() -> usize {
-    const STACK_SIZE: usize = 512;
-
-    let b = Box::new([0u8; STACK_SIZE]);
-    let ptr = Box::leak(b).as_ptr();
-    unsafe { ptr.add(STACK_SIZE) as usize }
-}
-
-fn start_thread() {
-    // bluh
-    let threads = THREADS.read();
-    let running_id = *RUNNING_THREAD_ID.lock();
-    let running_rw = &threads[running_id];
-    let running_guard = running_rw.read();
-    let running_opt = &*running_guard;
-    if let Some(running) = running_opt.as_ref() {
-        (running.start)();
-    } else {
-        panic!("running thread does not exist");
-    }
-}
-
-// TODO! JoinHandle?
-pub fn spawn<F: Fn() + Send + Sync + 'static>(f: F) {
-    let mut threads = THREADS.write();
-    let new_id;
-    {
-        let mut id = ID.lock();
-        new_id = *id;
-        *id += 1;
-    }
-    let new_thread = RwLock::new(Some(Thread {
-        id: new_id,
-        should_run: true,
-        start: Box::new(f),
-        context: JmpBuf {
-            sp: new_stack_pointer(),
-            ip: start_thread as usize,
-            ..Default::default()
-        },
-    }));
-    threads.push(new_thread)
-}
-
-pub fn exit() {
-    let threads = THREADS.read();
-    let running_id = RUNNING_THREAD_ID.lock();
-    let mut running = threads[*running_id].write();
-    *running = None;
-}
-
-
-pub fn switch() {
-//     let threads = THREADS.read();
-//     for thread_rw in threads {
-//         let thread_guard = thread_rw.read();
-//         let thread_opt = &*thread_guard;
-//         if let Some(thread) = thread_opt.as_ref() {
-//             // problem number one:
-//             // this is going to long jump out of borrows.
-//         }
-//     }
-}
-
-/*
-pub fn scheduler() {
-
-}
-*/
