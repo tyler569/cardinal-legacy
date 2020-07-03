@@ -9,22 +9,41 @@ use spin::{Mutex, RwLock};
 
 lazy_static! {
     pub static ref GLOBAL_THREAD_SET: RwLock<ThreadSet> = RwLock::new(ThreadSet::new());
-    pub static ref RUNNING_THREAD: Mutex<ThreadHandle> = Mutex::new(Weak::new());
+    pub static ref RUNNING_THREAD: Mutex<Handle> = Mutex::new(Weak::new());
 }
 
+#[derive(Debug)]
 pub struct ThreadError;
 
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct ThreadId(usize);
 
-type Result = ::core::result::Result<ThreadId, ThreadError>;
-type ThreadHandle = Weak<RwLock<Thread>>;
+type Result = ::core::result::Result<Handle, ThreadError>;
+type Handle = Weak<RwLock<Thread>>;
+
+pub struct Thread {
+    id: ThreadId,
+    context: JmpBuf,
+    start_fn: fn(),
+    stack: Box<[u8]>,
+    state: State,
+
+//    children: Vec<Handle>,
+//    parent: Handle,
+//    waiters: Vec<Handle>,
+//    tracer: Handle,
+}
+
+pub enum State {
+    Running,
+    Stopped,
+}
 
 pub struct ThreadSet {
-    pub threads: BTreeMap<ThreadId,
+    threads: BTreeMap<ThreadId,
         Arc<RwLock<Thread>>
     >,
-    runnable: VecDeque<ThreadHandle>,
+    runnable: VecDeque<Handle>,
     next_id: ThreadId,
 }
 
@@ -35,6 +54,20 @@ impl ThreadSet {
             runnable: VecDeque::new(),
             next_id: ThreadId(1),
         }
+    }
+
+    pub fn make_thread_zero(&mut self) -> Result {
+        let thread_zero = Arc::new(RwLock::new(Thread {
+            id: ThreadId(0),
+            context: JmpBuf::new(),
+            start_fn: || { panic!(); },
+            stack: Box::new([0; 0]),
+            state: State::Running,
+        }));
+        let new_weak = Arc::downgrade(&thread_zero);
+
+        self.threads.insert(ThreadId(0), thread_zero);
+        Ok(new_weak)
     }
 
     pub fn spawn(&mut self, start_fn: fn()) -> Result {
@@ -50,25 +83,27 @@ impl ThreadSet {
             context,
             start_fn,
             stack,
-            state: ThreadState::Running,
+            state: State::Running,
         }));
         let new_weak = Arc::downgrade(&new_thread);
 
         self.threads.insert(self.next_id, new_thread);
 
         self.next_id = ThreadId(self.next_id.0 + 1);
-        self.runnable.push_back(new_weak);
-        Ok(id)
+        self.runnable.push_back(new_weak.clone());
+        Ok(new_weak.clone())
     }
 
-    pub fn next(&mut self) -> ThreadHandle {
+    pub fn next(&mut self) -> Handle {
         self.runnable.pop_front().unwrap_or(Weak::new())
     }
 }
 
+pub fn spawn(f: fn()) {
+    GLOBAL_THREAD_SET.write().spawn(f).unwrap();
+}
 
-
-fn running() -> ThreadHandle {
+fn running() -> Handle {
     RUNNING_THREAD.lock().clone() 
 }
 
@@ -81,50 +116,45 @@ fn thread_entry() {
         Some(start_fn) => start_fn(),
         None => panic!("can't start a thread that does not exist"),
     }
+    exit();
 }
 
-fn schedule() {
+pub fn schedule() {
     let to;
     let from;
+    let to_thread;
+    let running_thread;
     {
         // all locks must be inside this inner block
+        running_thread = running().upgrade();
         from = running()
             .upgrade()
             .map(|th| { &mut th.write().context as *mut JmpBuf })
             .unwrap_or(core::ptr::null_mut());
-        to = GLOBAL_THREAD_SET.write().next()
+        to_thread = GLOBAL_THREAD_SET.write().next();
+        to = to_thread
             .upgrade()
             .map(|th| { &th.read().context as *const JmpBuf })
             .unwrap();
+
+        if running_thread.is_some() {
+            GLOBAL_THREAD_SET.write().runnable.push_back(running());
+        }
+        *RUNNING_THREAD.lock() = to_thread;
     }
     unsafe { switch(to, from) };
 }
 
 unsafe fn switch(to: *const JmpBuf, from: *mut JmpBuf) {
-    if set_jump(from) == 1 {
+    if !from.is_null() && set_jump(from) == 1 {
         return;
     }
     long_jump(to, 1);
 }
 
 fn exit() {
-    panic!();
-}
-
-pub struct ThreadGroup {
-    pub threads: Vec<ThreadHandle>,
-}
-
-pub enum ThreadState {
-    Running,
-    Stopped,
-}
-
-pub struct Thread {
-    pub id: ThreadId,
-    pub context: JmpBuf,
-    pub start_fn: fn(),
-    pub stack: Box<[u8]>,
-    pub state: ThreadState,
+    let id = RUNNING_THREAD.lock().upgrade().unwrap().read().id;
+    GLOBAL_THREAD_SET.write().threads.remove(&id);
+    schedule();
 }
 

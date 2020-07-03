@@ -2,7 +2,8 @@
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]
 #![feature(ffi_returns_twice)]
-#![feature(const_btree_new)] 
+#![feature(const_btree_new)]
+
 // I wish I didn't have to do this -- I should see if I can figure out a
 // better solution. Is it really better to delete code that isn't being used?
 // What if I was previously using a data structure and pulled back from it
