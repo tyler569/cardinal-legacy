@@ -55,8 +55,8 @@ impl JmpBuf {
 
 extern "C" {
     #[ffi_returns_twice]
-    pub fn set_jump(buf: &mut JmpBuf) -> isize;
-    pub fn long_jump(buf: &JmpBuf, value: isize) -> !;
+    pub fn set_jump(buf: *mut JmpBuf) -> isize;
+    pub fn long_jump(buf: *const JmpBuf, value: isize) -> !;
 }
 
 const PRIMARY_PIC_COMMAND: u16 = 0x20;

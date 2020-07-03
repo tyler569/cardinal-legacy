@@ -3,6 +3,7 @@
 #![feature(negative_impls)]
 #![feature(ffi_returns_twice)]
 #![feature(const_btree_new)]
+
 // I wish I didn't have to do this -- I should see if I can figure out a
 // better solution. Is it really better to delete code that isn't being used?
 // What if I was previously using a data structure and pulled back from it
@@ -16,6 +17,9 @@ use core::panic::PanicInfo;
 
 extern crate alloc;
 use alloc::boxed::Box;
+
+#[macro_use]
+extern crate lazy_static;
 
 pub use spin as sync;
 
@@ -183,8 +187,6 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     if is_return == 0 {
         unsafe { jump_back(&some_jump_buf) };
     }
-
-    thread::GLOBAL_THREAD_SET.write().spawn(|| { println!("this is a thread"); });
 
     unsafe {
         x86::enable_irqs();

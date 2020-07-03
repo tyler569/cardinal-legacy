@@ -1,13 +1,16 @@
 
-use crate::x86::{JmpBuf};
-use core::pin::Pin;
+use crate::x86::{JmpBuf, set_jump, long_jump};
+// use core::pin::Pin;
 use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, VecDeque};
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
-use spin::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use spin::{Mutex, RwLock};
 
-pub static GLOBAL_THREAD_SET: RwLock<ThreadSet> = RwLock::new(ThreadSet::new());
+lazy_static! {
+    pub static ref GLOBAL_THREAD_SET: RwLock<ThreadSet> = RwLock::new(ThreadSet::new());
+    pub static ref RUNNING_THREAD: Mutex<ThreadHandle> = Mutex::new(Weak::new());
+}
 
 pub struct ThreadError;
 
@@ -15,18 +18,21 @@ pub struct ThreadError;
 pub struct ThreadId(usize);
 
 type Result = ::core::result::Result<ThreadId, ThreadError>;
+type ThreadHandle = Weak<RwLock<Thread>>;
 
 pub struct ThreadSet {
     pub threads: BTreeMap<ThreadId,
-        Pin<Arc<RwLock<Thread>>>
+        Arc<RwLock<Thread>>
     >,
+    runnable: VecDeque<ThreadHandle>,
     next_id: ThreadId,
 }
 
 impl ThreadSet {
-    pub const fn new() -> ThreadSet {
+    pub fn new() -> ThreadSet {
         ThreadSet {
             threads: BTreeMap::new(),
+            runnable: VecDeque::new(),
             next_id: ThreadId(1),
         }
     }
@@ -39,24 +45,66 @@ impl ThreadSet {
         context.ip = thread_entry as usize;
         let id = self.next_id;
 
-        let mut new_thread = Arc::pin(RwLock::new(Thread {
+        let new_thread = Arc::new(RwLock::new(Thread {
             id,
             context,
             start_fn,
             stack,
             state: ThreadState::Running,
         }));
+        let new_weak = Arc::downgrade(&new_thread);
 
         self.threads.insert(self.next_id, new_thread);
 
         self.next_id = ThreadId(self.next_id.0 + 1);
+        self.runnable.push_back(new_weak);
         Ok(id)
+    }
+
+    pub fn next(&mut self) -> ThreadHandle {
+        self.runnable.pop_front().unwrap_or(Weak::new())
     }
 }
 
+
+
+fn running() -> ThreadHandle {
+    RUNNING_THREAD.lock().clone() 
+}
+
 fn thread_entry() {
-    // thread.start_fn();
-    exit(); // or panic! -- not sure which is more correct.
+    let start_fn_opt = running().upgrade().map(|th| {
+        th.read().start_fn
+    });
+
+    match start_fn_opt {
+        Some(start_fn) => start_fn(),
+        None => panic!("can't start a thread that does not exist"),
+    }
+}
+
+fn schedule() {
+    let to;
+    let from;
+    {
+        // all locks must be inside this inner block
+        from = running()
+            .upgrade()
+            .map(|th| { &mut th.write().context as *mut JmpBuf })
+            .unwrap_or(core::ptr::null_mut());
+        to = GLOBAL_THREAD_SET.write().next()
+            .upgrade()
+            .map(|th| { &th.read().context as *const JmpBuf })
+            .unwrap();
+    }
+    unsafe { switch(to, from) };
+}
+
+unsafe fn switch(to: *const JmpBuf, from: *mut JmpBuf) {
+    if set_jump(from) == 1 {
+        return;
+    }
+    long_jump(to, 1);
 }
 
 fn exit() {
@@ -64,7 +112,7 @@ fn exit() {
 }
 
 pub struct ThreadGroup {
-    pub threads: Vec<Weak<RwLock<Thread>>>,
+    pub threads: Vec<ThreadHandle>,
 }
 
 pub enum ThreadState {
