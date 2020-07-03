@@ -4,7 +4,6 @@ use crate::x86::{JmpBuf, set_jump, long_jump};
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::sync::{Arc, Weak};
-use alloc::vec::Vec;
 use spin::{Mutex, RwLock};
 
 lazy_static! {

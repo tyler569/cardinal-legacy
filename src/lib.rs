@@ -187,7 +187,7 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
         unsafe { jump_back(&some_jump_buf) };
     }
 
-    thread::GLOBAL_THREAD_SET.write().make_thread_zero();
+    thread::GLOBAL_THREAD_SET.write().make_thread_zero().unwrap();
     thread::spawn(|| { println!("This is a thread"); });
     thread::spawn(|| { println!("This is a thread too"); });
     thread::schedule();
@@ -231,9 +231,9 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
 #[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
-    let mut serial = unsafe { serial::SerialPort::new_raw(0x3f8) };
-
-    write!(serial, "{}\r\n", panic_info).unwrap();
+    // TODO: we may have panic'd while holding the serial lock, this could
+    // probably deadlock.
+    println!("{}", panic_info);
 
     loop {}
 }
