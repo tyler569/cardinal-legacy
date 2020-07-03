@@ -13,6 +13,8 @@ parser.add_option('-f', '--file', help='Program to dump', default='NGK')
 parser.add_option('-3', '--32bits', help='Dump in 32-bit mode', dest='bits32')
 parser.add_option('-i', '--intel', action='store_true', help='Dump in intel-format asm')
 parser.add_option('-t', '--att', action='store_false', help='Dump in att-format asm', dest='intel')
+parser.add_option('-x', '--rustfilt', action='store_true', help='Use rustfilt (default)', default=True)
+parser.add_option('-X', '--no-rustfilt', action='store_false', help='Disable rustfilt', dest='rustfilt')
 
 (options, args) = parser.parse_args()
 
@@ -60,6 +62,8 @@ if options.bits32:
     command += ',i386'
 command += ' -j.text -j.low.text'
 command += f' {file}'
+if options.rustfilt:
+    command += ' | rustfilt'
 command += ' | less'
 subprocess.run(command, shell=True)
 
