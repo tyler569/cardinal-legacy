@@ -7,7 +7,7 @@ use alloc::sync::{Arc, Weak};
 use spin::{Mutex, RwLock};
 
 lazy_static! {
-    pub static ref GLOBAL_THREAD_SET: RwLock<ThreadSet> = RwLock::new(ThreadSet::new());
+    pub static ref GLOBAL_THREAD_SET: RwLock<ThreadSet> = RwLock::new(ThreadSet::new_with_idle_thread());
     pub static ref RUNNING_THREAD: Mutex<Handle> = Mutex::new(Weak::new());
 }
 
@@ -55,7 +55,13 @@ impl ThreadSet {
         }
     }
 
-    pub fn make_thread_zero(&mut self) -> Result {
+    pub fn new_with_idle_thread() -> ThreadSet {
+        let mut ts = Self::new();
+        ts.make_thread_zero();
+        ts
+    }
+
+    fn make_thread_zero(&mut self) {
         let thread_zero = Arc::new(RwLock::new(Thread {
             id: ThreadId(0),
             context: JmpBuf::new(),
@@ -63,10 +69,8 @@ impl ThreadSet {
             stack: Box::new([0; 0]),
             state: State::Running,
         }));
-        let new_weak = Arc::downgrade(&thread_zero);
 
         self.threads.insert(ThreadId(0), thread_zero);
-        Ok(new_weak)
     }
 
     pub fn spawn(&mut self, start_fn: fn()) -> Result {

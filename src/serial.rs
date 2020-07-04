@@ -1,5 +1,6 @@
-use core::fmt;
+use core::fmt::{self, Write};
 
+use crate::sync::Mutex;
 use crate::x86::{inb, outb};
 
 pub struct SerialPort {
@@ -61,3 +62,30 @@ impl fmt::Write for SerialPort {
         Ok(())
     }
 }
+
+lazy_static! {
+    pub static ref GLOBAL_SERIAL: Mutex<SerialPort> = {
+        let mut serial = SerialPort::new(0x3f8);
+        serial.init();
+        Mutex::new(serial)
+    };
+}
+
+pub fn serial_print(args: fmt::Arguments) {
+    GLOBAL_SERIAL.lock().write_fmt(args).unwrap();
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => {
+        $crate::serial::serial_print(format_args!($($arg)*));
+    };
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\r\n"));
+    ($fmt:expr) => ($crate::print!(concat!($fmt, "\r\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\r\n"), $($arg)*));
+}
+

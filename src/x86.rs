@@ -59,6 +59,14 @@ extern "C" {
     pub fn long_jump(buf: *const JmpBuf, value: isize) -> !;
 }
 
+extern "C" {
+    fn asm_read_cr2() -> usize;
+}
+
+pub fn read_cr2() -> usize {
+    unsafe { asm_read_cr2() }
+}
+
 const PRIMARY_PIC_COMMAND: u16 = 0x20;
 const PRIMARY_PIC_DATA: u16 = 0x21;
 const SECONDARY_PIC_COMMAND: u16 = 0xA0;

@@ -22,6 +22,20 @@ extern crate lazy_static;
 
 pub use spin as sync;
 
+#[macro_export]
+macro_rules! vprint {
+    ($($arg:tt)*) => {
+        $crate::video_print(format_args!($($arg)*));
+    };
+}
+
+#[macro_export]
+macro_rules! vprintln {
+    () => ($crate::vprint!("\n"));
+    ($fmt:expr) => ($crate::vprint!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::vprint!(concat!($fmt, "\n"), $($arg)*));
+}
+
 #[cfg(target_os = "none")]
 mod allocator;
 
@@ -29,7 +43,6 @@ mod thread;
 mod serial;
 mod x86;
 
-use serial::SerialPort;
 use sync::Mutex;
 use x86::{long_jump, set_jump, JmpBuf};
 
@@ -104,42 +117,9 @@ impl fmt::Write for VgaScreen {
 }
 
 pub static GLOBAL_VGA: Mutex<VgaScreen> = Mutex::new(VgaScreen::new());
-pub static GLOBAL_SERIAL: Mutex<SerialPort> = Mutex::new(SerialPort::new(0x3f8));
-
-pub fn serial_print(args: fmt::Arguments) {
-    GLOBAL_SERIAL.lock().write_fmt(args).unwrap();
-}
 
 pub fn video_print(args: fmt::Arguments) {
     GLOBAL_VGA.lock().write_fmt(args).unwrap();
-}
-
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => {
-        $crate::serial_print(format_args!($($arg)*));
-    };
-}
-
-#[macro_export]
-macro_rules! println {
-    () => ($crate::print!("\r\n"));
-    ($fmt:expr) => ($crate::print!(concat!($fmt, "\r\n")));
-    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\r\n"), $($arg)*));
-}
-
-#[macro_export]
-macro_rules! vprint {
-    ($($arg:tt)*) => {
-        $crate::video_print(format_args!($($arg)*));
-    };
-}
-
-#[macro_export]
-macro_rules! vprintln {
-    () => ($crate::vprint!("\n"));
-    ($fmt:expr) => ($crate::vprint!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => ($crate::vprint!(concat!($fmt, "\n"), $($arg)*));
 }
 
 fn return_a_closure(x: i32) -> Box<dyn FnOnce(i32) -> i32> {
@@ -152,7 +132,6 @@ unsafe fn jump_back(buffer: &JmpBuf) -> ! {
 
 #[no_mangle]
 pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> ! {
-    GLOBAL_SERIAL.lock().init();
     GLOBAL_VGA.lock().clear();
 
     vprintln!("Hello World from");
@@ -187,7 +166,6 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
         unsafe { jump_back(&some_jump_buf) };
     }
 
-    thread::GLOBAL_THREAD_SET.write().make_thread_zero().unwrap();
     thread::spawn(|| { println!("This is a thread"); });
     thread::spawn(|| { println!("This is a thread too"); });
     thread::schedule();
@@ -211,7 +189,7 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     // write!(serial, "{:?}\r\n", f).unwrap();
 
     if interrupt == 36 {
-        let c = GLOBAL_SERIAL.lock().read_byte();
+        let c = serial::GLOBAL_SERIAL.lock().read_byte();
         println!("serial read: {}", c as char);
     }
 
@@ -224,7 +202,8 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     }
 
     if interrupt == 14 {
-        panic!("Page fault, not handled");
+        println!("Page fault at {:x}", x86::read_cr2());
+        panic!("not handled");
     }
 }
 
