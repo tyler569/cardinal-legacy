@@ -36,11 +36,6 @@ impl SerialPort {
         }
     }
 
-    // For the case where the port is already initialized
-    pub unsafe fn new_raw(port: u16) -> Self {
-        SerialPort { port }
-    }
-
     fn status(&self) -> u8 {
         unsafe { inb(self.port + UART_LINE_STATUS) }
     }
