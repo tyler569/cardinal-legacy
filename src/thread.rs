@@ -1,5 +1,4 @@
-
-use crate::x86::{JmpBuf, set_jump, long_jump};
+use crate::x86::{long_jump, set_jump, JmpBuf};
 // use core::pin::Pin;
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -7,7 +6,8 @@ use alloc::sync::{Arc, Weak};
 use spin::{Mutex, RwLock};
 
 lazy_static! {
-    pub static ref GLOBAL_THREAD_SET: RwLock<ThreadSet> = RwLock::new(ThreadSet::new_with_idle_thread());
+    pub static ref GLOBAL_THREAD_SET: RwLock<ThreadSet> =
+        RwLock::new(ThreadSet::new_with_idle_thread());
     pub static ref RUNNING_THREAD: Mutex<Handle> = Mutex::new(Weak::new());
 }
 
@@ -20,28 +20,27 @@ pub struct ThreadId(usize);
 type Result = ::core::result::Result<Handle, ThreadError>;
 type Handle = Weak<RwLock<Thread>>;
 
+#[derive(Debug)]
 pub struct Thread {
     id: ThreadId,
     context: JmpBuf,
     start_fn: fn(),
     stack: Box<[u8]>,
     state: State,
-
-//    children: Vec<Handle>,
-//    parent: Handle,
-//    waiters: Vec<Handle>,
-//    tracer: Handle,
+    //    children: Vec<Handle>,
+    //    parent: Handle,
+    //    waiters: Vec<Handle>,
+    //    tracer: Handle,
 }
 
+#[derive(Debug)]
 pub enum State {
     Running,
     Stopped,
 }
 
 pub struct ThreadSet {
-    threads: BTreeMap<ThreadId,
-        Arc<RwLock<Thread>>
-    >,
+    threads: BTreeMap<ThreadId, Arc<RwLock<Thread>>>,
     runnable: VecDeque<Handle>,
     next_id: ThreadId,
 }
@@ -65,7 +64,9 @@ impl ThreadSet {
         let thread_zero = Arc::new(RwLock::new(Thread {
             id: ThreadId(0),
             context: JmpBuf::new(),
-            start_fn: || { panic!(); },
+            start_fn: || {
+                panic!();
+            },
             stack: Box::new([0; 0]),
             state: State::Running,
         }));
@@ -107,13 +108,11 @@ pub fn spawn(f: fn()) {
 }
 
 fn running() -> Handle {
-    RUNNING_THREAD.lock().clone() 
+    RUNNING_THREAD.lock().clone()
 }
 
 fn thread_entry() {
-    let start_fn_opt = running().upgrade().map(|th| {
-        th.read().start_fn
-    });
+    let start_fn_opt = running().upgrade().map(|th| th.read().start_fn);
 
     match start_fn_opt {
         Some(start_fn) => start_fn(),
@@ -125,19 +124,24 @@ fn thread_entry() {
 pub fn schedule() {
     let to;
     let from;
-    let to_thread;
-    let running_thread;
+    print!("in runnable: [ ");
+    for th in &GLOBAL_THREAD_SET.read().runnable {
+        let ThreadId(thread) = th.upgrade().unwrap().read().id;
+        print!("{:?} ", thread);
+    }
+    println!("]");
     {
         // all locks must be inside this inner block
-        running_thread = running().upgrade();
+        let running_thread = running().upgrade();
+        let to_thread = GLOBAL_THREAD_SET.write().next();
+
         from = running()
             .upgrade()
-            .map(|th| { &mut th.write().context as *mut JmpBuf })
+            .map(|th| &mut th.write().context as *mut JmpBuf)
             .unwrap_or(core::ptr::null_mut());
-        to_thread = GLOBAL_THREAD_SET.write().next();
         to = to_thread
             .upgrade()
-            .map(|th| { &th.read().context as *const JmpBuf })
+            .map(|th| &th.read().context as *const JmpBuf)
             .unwrap();
 
         if running_thread.is_some() {
@@ -145,6 +149,7 @@ pub fn schedule() {
         }
         *RUNNING_THREAD.lock() = to_thread;
     }
+    println!("schedule");
     unsafe { switch(to, from) };
 }
 
@@ -155,9 +160,13 @@ unsafe fn switch(to: *const JmpBuf, from: *mut JmpBuf) {
     long_jump(to, 1);
 }
 
-fn exit() {
-    let id = RUNNING_THREAD.lock().upgrade().unwrap().read().id;
-    GLOBAL_THREAD_SET.write().threads.remove(&id);
+fn exit() -> ! {
+    println!("exit");
+    {
+        let id = RUNNING_THREAD.lock().upgrade().unwrap().read().id;
+        GLOBAL_THREAD_SET.write().threads.remove(&id);
+    }
+    println!("calling scheudle");
     schedule();
+    panic!();
 }
-

@@ -120,7 +120,6 @@ const TIMER_CHANNEL_0: u8 = 0;
 const TIMER_ACCESS_HILO: u8 = 0x30;
 const TIMER_MODE_3: u8 = 0x06; // square wave
 
-
 pub fn timer_init(hertz: usize) {
     let mut divisor = 1_193_182 / hertz;
     if divisor > 65535 {
@@ -130,7 +129,10 @@ pub fn timer_init(hertz: usize) {
     }
 
     unsafe {
-        outb(TIMER_CMD, TIMER_CHANNEL_0 | TIMER_ACCESS_HILO | TIMER_MODE_3);
+        outb(
+            TIMER_CMD,
+            TIMER_CHANNEL_0 | TIMER_ACCESS_HILO | TIMER_MODE_3,
+        );
         outb(TIMER_CH0, divisor as u8);
         outb(TIMER_CH0, (divisor >> 8) as u8);
     }

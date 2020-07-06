@@ -83,4 +83,3 @@ macro_rules! println {
     ($fmt:expr) => ($crate::print!(concat!($fmt, "\r\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\r\n"), $($arg)*));
 }
-

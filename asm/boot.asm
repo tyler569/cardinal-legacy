@@ -327,68 +327,73 @@ PDPT:
     times 509 dq 0
     dq PD + PAGE_FLAGS
     dq 0
+
 PD:
-    dq PT0 + PAGE_FLAGS
-    dq PT1 + PAGE_FLAGS
-    dq PT2 + PAGE_FLAGS
-    dq PT3 + PAGE_FLAGS
-    dq PT4 + PAGE_FLAGS
-    times 507 dq 0
-
-PT0: ; PT0 covers 000000 -> 200000
-    times 184 dq 0
-    dq 0xb8000 + PAGE_FLAGS
-    times 71 dq 0
-%assign PAGE 0x100000 + PAGE_FLAGS
-%rep 256
-    dq PAGE
-%assign PAGE PAGE + 0x1000
-%endrep
-    ; times 128 dq 0
-
-PT1: ; PT1 covers 200000 -> 400000
-%assign PAGE 0x200000 + PAGE_FLAGS
-%rep 512
-    dq PAGE
-%assign PAGE PAGE + 0x1000
-%endrep
-
-PT2: ; PT2 covers 400000 -> 600000
-%assign PAGE 0x400000 + PAGE_FLAGS
-%rep 512
-    dq PAGE
-%assign PAGE PAGE + 0x1000
-%endrep
-
-PT3: ; PT3 covers 600000 -> 800000
-%assign PAGE 0x600000 + PAGE_FLAGS
-%rep 512
-    dq PAGE
-%assign PAGE PAGE + 0x1000
-%endrep
-
-PT4: ; PT4 covers 800000 -> 1000000
-%assign PAGE 0x800000 + PAGE_FLAGS
-%rep 512
-    dq PAGE
-%assign PAGE PAGE + 0x1000
-%endrep
-
-; test second page table recureive structure
-; test_PML4:
-;     dq test_PDPT + PAGE_PRESENT
-;     times 255 dq 0
-;     dq test_PML4 ; can have, can't use for now
-;     dq test_PML4 + PAGE_PRESENT
-;     times 254 dq 0
-; test_PDPT:
-;     dq test_PD + PAGE_PRESENT
-;     times 511 dq 0
-; test_PD:
-;     dq test_PT + PAGE_PRESENT
-;     times 511 dq 0
-; test_PT:
-;     dq 0x12345000 + PAGE_PRESENT
-;     times 511 dq 0
+    dq 0 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x200000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x400000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x600000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x800000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0xA00000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0xC00000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0xE00000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x1000000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x1200000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x1400000 + PAGE_FLAGS + PAGE_ISHUGE
+    dq 0x1600000 + PAGE_FLAGS + PAGE_ISHUGE
+    times 500 dq 0
+; PD:
+;     dq PT0 + PAGE_FLAGS
+;     dq PT1 + PAGE_FLAGS
+;     dq PT2 + PAGE_FLAGS
+;     dq PT3 + PAGE_FLAGS
+;     dq PT4 + PAGE_FLAGS
+;     dq PT5 + PAGE_FLAGS
+;     times 506 dq 0
 ; 
+; PT0: ; PT0 covers 000000 -> 200000
+;     times 184 dq 0
+;     dq 0xb8000 + PAGE_FLAGS
+;     times 71 dq 0
+; %assign PAGE 0x100000 + PAGE_FLAGS
+; %rep 256
+;     dq PAGE
+; %assign PAGE PAGE + 0x1000
+; %endrep
+;     ; times 128 dq 0
+; 
+; PT1: ; PT1 covers 200000 -> 400000
+; %assign PAGE 0x200000 + PAGE_FLAGS
+; %rep 512
+;     dq PAGE
+; %assign PAGE PAGE + 0x1000
+; %endrep
+; 
+; PT2: ; PT2 covers 400000 -> 600000
+; %assign PAGE 0x400000 + PAGE_FLAGS
+; %rep 512
+;     dq PAGE
+; %assign PAGE PAGE + 0x1000
+; %endrep
+; 
+; PT3: ; PT3 covers 600000 -> 800000
+; %assign PAGE 0x600000 + PAGE_FLAGS
+; %rep 512
+;     dq PAGE
+; %assign PAGE PAGE + 0x1000
+; %endrep
+; 
+; PT4: ; PT4 covers 800000 -> A00000
+; %assign PAGE 0x800000 + PAGE_FLAGS
+; %rep 512
+;     dq PAGE
+; %assign PAGE PAGE + 0x1000
+; %endrep
+; 
+; PT5: ; PT4 covers A00000 -> C00000
+; %assign PAGE 0xA00000 + PAGE_FLAGS
+; %rep 512
+;     dq PAGE
+; %assign PAGE PAGE + 0x1000
+; %endrep
 

@@ -2,12 +2,12 @@
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]
 #![feature(ffi_returns_twice)]
-#![feature(const_btree_new)] 
-
+#![feature(const_btree_new)]
 #![allow(dead_code)]
 
 #[cfg(target_os = "none")]
 use core::panic::PanicInfo;
+use core::fmt::Write;
 
 extern crate alloc;
 use alloc::boxed::Box;
@@ -17,10 +17,12 @@ extern crate lazy_static;
 
 pub use spin as sync;
 
+// This should be first, since it defines println!
+#[macro_use]
+mod serial;
 #[cfg(target_os = "none")]
 mod allocator;
 mod thread;
-mod serial;
 mod x86;
 
 use x86::{long_jump, set_jump, JmpBuf};
@@ -62,16 +64,20 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     let closed_fn = return_a_closure(10);
     println!("Call a closure: {}", closed_fn(10));
 
-    let mut some_jump_buf = JmpBuf::new();
-    let is_return = unsafe { set_jump(&mut some_jump_buf) };
-    println!("set_jump returned: {}", is_return);
+    // let mut some_jump_buf = JmpBuf::new();
+    // let is_return = unsafe { set_jump(&mut some_jump_buf) };
+    // println!("set_jump returned: {}", is_return);
 
-    if is_return == 0 {
-        unsafe { jump_back(&some_jump_buf) };
-    }
+    // if is_return == 0 {
+    //     unsafe { jump_back(&some_jump_buf) };
+    // }
 
-    thread::spawn(|| { println!("This is a thread"); });
-    thread::spawn(|| { println!("This is a thread too"); });
+    thread::spawn(|| {
+        println!("This is a thread");
+    });
+    thread::spawn(|| {
+        println!("This is a thread too");
+    });
     thread::schedule();
 
     unsafe {
@@ -114,9 +120,7 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
 #[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
-    // TODO: we may have panic'd while holding the serial lock, this could
-    // probably deadlock.
-    println!("{}", panic_info);
-
+    // println!("{}", panic_info);S
+    write!(serial::SerialPort::new(0x3f8), "{}", panic_info).unwrap();
     loop {}
 }
