@@ -7,7 +7,6 @@
 
 #[cfg(target_os = "none")]
 use core::panic::PanicInfo;
-use core::fmt::Write;
 
 extern crate alloc;
 use alloc::boxed::Box;
@@ -17,15 +16,20 @@ extern crate lazy_static;
 
 pub use spin as sync;
 
-// This should be first, since it defines println!
+#[macro_use]
+mod debug;
+
+// This should be early, since it defines println!
 #[macro_use]
 mod serial;
+
 #[cfg(target_os = "none")]
 mod allocator;
+
 mod thread;
 mod x86;
 
-use x86::{long_jump, set_jump, JmpBuf};
+use x86::{long_jump, JmpBuf};
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
 const USE_TIMER: bool = false;
@@ -55,6 +59,8 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     x86::idt_init();
     x86::pic_init();
     x86::unmask_irq(4);
+
+    dprintln!("Test E9");
 
     if USE_TIMER {
         x86::timer_init(1000);
@@ -112,7 +118,7 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     }
 
     if interrupt == 14 {
-        println!("Page fault at {:x}", x86::read_cr2());
+        dprintln!("Page fault at {:x}", x86::read_cr2());
         panic!("not handled");
     }
 }
@@ -120,7 +126,6 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
 #[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
-    // println!("{}", panic_info);S
-    write!(serial::SerialPort::new(0x3f8), "{}", panic_info).unwrap();
+    dprintln!("{}", panic_info);
     loop {}
 }
