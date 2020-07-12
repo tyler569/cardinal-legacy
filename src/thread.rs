@@ -1,5 +1,6 @@
 use crate::x86::{long_jump, set_jump, JmpBuf};
 // use core::pin::Pin;
+use core::fmt;
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::sync::{Arc, Weak};
@@ -20,12 +21,29 @@ pub struct ThreadId(usize);
 type Result = ::core::result::Result<Handle, ThreadError>;
 type Handle = Weak<RwLock<Thread>>;
 
+#[repr(C, align(32))]
+struct Stack {
+    v: [u8; 2048],
+}
+
+impl Stack {
+    fn stack_ptr(&self) -> *const u8 {
+        (&self.v as *const u8).wrapping_add(2048)
+    }
+}
+
+impl fmt::Debug for Stack {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Stack")
+    }
+}
+
 #[derive(Debug)]
 pub struct Thread {
     id: ThreadId,
-    context: JmpBuf,
+    pub context: JmpBuf,
     start_fn: fn(),
-    stack: Box<[u8]>,
+    stack: Box<Stack>,
     state: State,
     //    children: Vec<Handle>,
     //    parent: Handle,
@@ -40,7 +58,7 @@ pub enum State {
 }
 
 pub struct ThreadSet {
-    threads: BTreeMap<ThreadId, Arc<RwLock<Thread>>>,
+    pub threads: BTreeMap<ThreadId, Arc<RwLock<Thread>>>,
     runnable: VecDeque<Handle>,
     next_id: ThreadId,
 }
@@ -67,7 +85,7 @@ impl ThreadSet {
             start_fn: || {
                 panic!();
             },
-            stack: Box::new([0; 0]),
+            stack: Box::new(Stack { v: [0; 2048] }),
             state: State::Running,
         }));
 
@@ -75,9 +93,9 @@ impl ThreadSet {
     }
 
     pub fn spawn(&mut self, start_fn: fn()) -> Result {
-        let stack = Box::new([0; 2048]);
+        let stack = Box::new(Stack { v: [0; 2048] });
         let mut context = JmpBuf::new();
-        context.sp = stack.as_ptr() as usize + 2048;
+        context.sp = stack.stack_ptr() as usize;
         context.bp = context.sp;
         context.ip = thread_entry as usize;
         let id = self.next_id;

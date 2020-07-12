@@ -60,8 +60,6 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     x86::pic_init();
     x86::unmask_irq(4);
 
-    dprintln!("Test E9");
-
     if USE_TIMER {
         x86::timer_init(1000);
         x86::unmask_irq(0);
@@ -84,13 +82,16 @@ pub extern "C" fn kernel_main(_multiboot_magic: u32, multiboot_info: usize) -> !
     thread::spawn(|| {
         println!("This is a thread too");
     });
+
+    for ref thread in thread::GLOBAL_THREAD_SET.read().threads.iter() {
+        println!("{:x?}", thread.1.read().context);
+    }
+
     thread::schedule();
 
     unsafe {
         x86::enable_irqs();
     }
-
-    // thread::sched_yield();
 
     loop {}
 }
@@ -107,20 +108,24 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     if interrupt == 36 {
         let c = serial::GLOBAL_SERIAL.lock().read_byte();
         println!("serial read: {}", c as char);
+        return;
     }
 
     if interrupt == 32 {
-        // thread::timeout();
+        // thread::schedule();
+        return;
     }
 
     if interrupt >= 32 && interrupt < 48 {
         x86::send_eoi(interrupt - 32);
+        return;
     }
 
     if interrupt == 14 {
         dprintln!("Page fault at {:x}", x86::read_cr2());
-        panic!("not handled");
     }
+    dprintln!("Interrupt {} Triggered at {:x}", interrupt, (*frame).ip);
+    panic!("not handled");
 }
 
 #[cfg(target_os = "none")]
