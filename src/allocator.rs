@@ -2,6 +2,13 @@ use alloc::alloc::{GlobalAlloc, Layout};
 
 use crate::sync::{Mutex, MutexGuard};
 
+fn round_up(u: usize, power: usize) -> usize {
+    if !power.is_power_of_two() {
+        panic!("can't round except to power of two");
+    }
+    (u + power - 1) & !(power - 1)
+}
+
 const HEAP_LEN: usize = 128 * 1024;
 static mut EARLY_HEAP: [u8; HEAP_LEN] = [0u8; HEAP_LEN];
 
@@ -28,9 +35,15 @@ impl EarlyHeap {
 }
 
 unsafe impl GlobalAlloc for Locked<EarlyHeap> {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        let _allocator = self.lock();
-        core::ptr::null_mut()
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let mut allocator = self.lock();
+
+        let new_base = round_up(allocator.index, layout.align());
+        let next_index = new_base + layout.size();
+
+        allocator.index = next_index;
+
+        &mut EARLY_HEAP[new_base] as *mut u8
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {

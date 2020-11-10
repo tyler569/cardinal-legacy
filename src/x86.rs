@@ -4,6 +4,8 @@ extern "C" {
 
     pub fn enable_irqs();
     pub fn disable_irqs();
+
+    pub fn break_point();
 }
 
 #[repr(C)]
@@ -218,7 +220,7 @@ fn raw_set_idt_gate(irq: usize, handler: u64, flags: u64, cs: u64, ist: u64) {
 fn set_idt_gate(irq: usize, handler: unsafe extern "C" fn()) {
     let rpl = 0; // 3 on syscall
     let gdt_selector = 8;
-    let gate_type = 0xE;
+    let gate_type = if irq >= 32 { 0x0F } else { 0x0E };
     let flags = 0x80 | rpl << 5 | gate_type;
 
     // This is a defined bit structure and needs to be u64.
@@ -279,4 +281,8 @@ pub fn idt_init() {
 
     // set_idt_gate(128, isr_syscall);
     set_idt_gate(130, isr_panic);
+}
+
+extern "C" {
+    pub fn pause();
 }

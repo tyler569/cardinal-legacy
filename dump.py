@@ -10,7 +10,6 @@ parser.add_option('-a', '--addr2line', action='store_true', help='Run addr2line 
 parser.add_option('-s', '--source', action='store_true', help="Intersperce source (default)", default=True, dest='source')
 parser.add_option('-S', '--no-source', action='store_false', help="Don't intersperce source", dest='source')
 parser.add_option('-f', '--file', help='Program to dump', default='NGK')
-parser.add_option('-3', '--32bits', help='Dump in 32-bit mode', dest='bits32')
 parser.add_option('-i', '--intel', action='store_true', help='Dump in intel-format asm')
 parser.add_option('-t', '--att', action='store_false', help='Dump in att-format asm', dest='intel')
 parser.add_option('-x', '--rustfilt', action='store_true', help='Use rustfilt (default)', default=True)
@@ -19,19 +18,12 @@ parser.add_option('-X', '--no-rustfilt', action='store_false', help='Disable rus
 (options, args) = parser.parse_args()
 
 bits = 64
-if options.bits32:
-    bits = 32
-if os.environ.get('ARCH') == 'i686':
-    bits = 32
 
 file = options.file
 if file == 'NGK':
     file = 'cardinal.elf' ### defaults
 
-if bits == 32:
-    objdump = 'i686-elf-objdump'
-else:
-    objdump = 'x86_64-elf-objdump'
+objdump = 'objdump'
 
 if options.addr2line:
     output = subprocess.check_output('tail -n50 last_output', shell=True)
@@ -58,8 +50,6 @@ else:
     command += ' -d'
 if options.intel:
     command += ' -Mintel'
-if options.bits32:
-    command += ',i386'
 command += ' -j.text -j.low.text'
 command += f' {file}'
 if options.rustfilt:

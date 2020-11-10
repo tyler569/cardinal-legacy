@@ -179,6 +179,10 @@ stop:
     hlt
     jmp stop
 
+global break_point
+break_point:
+    ret
+
 section .low.bss
 ; Bootstrap low kernel stack
 align 0x10

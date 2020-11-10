@@ -59,3 +59,7 @@ global asm_read_cr2
 asm_read_cr2:
     mov rax, cr2
     ret
+
+global pause
+pause:
+    hlt
