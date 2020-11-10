@@ -4,6 +4,7 @@ use alloc::collections::{BTreeMap, VecDeque};
 use alloc::sync::Arc;
 use core::fmt;
 use core::mem;
+use core::ops::Drop;
 use core::ptr;
 use spin::RwLock;
 
@@ -63,6 +64,12 @@ impl Thread {
 
     fn is_running(&self) -> bool {
         self.state == State::Running
+    }
+}
+
+impl Drop for Thread {
+    fn drop(&mut self) {
+        println!("dropping thread: {}", self.id);
     }
 }
 
@@ -150,8 +157,11 @@ pub fn spawn<F>(func: F) -> ThreadArc
 
 pub fn exit() -> ! {
     running().map(|thread| {
-        thread.write().state = State::Dead;
-        println!("exit: {:?}", thread.read().id);
+        let mut th = thread.write();
+        th.state = State::Dead;
+        let id = th.id;
+        THREADS.write().threads.remove(&id);
+        println!("exit: {:?}", id);
     });
     schedule();
     panic!("thread continued after exitting");
@@ -183,10 +193,13 @@ use crate::interrupt::InterruptDisabler;
 
 pub fn schedule() {
     let _int = InterruptDisabler::new();
-    let to: ThreadArc;
-    let from: Option<ThreadArc>;
+    let from_buf: *mut JmpBuf;
+    let to_buf: *const JmpBuf;
 
     {
+        let to: ThreadArc;
+        let from: Option<ThreadArc>;
+
         let mut threads = match THREADS.try_write() {
             Some(guard) => guard,
             None => return,
@@ -207,14 +220,9 @@ pub fn schedule() {
         to = to_opt.unwrap_or(threads.idle());
 
         threads.running = Some(to.clone());
-    }
 
-    dprintln!("{:?} -> {:?}", from.as_ref().map(|f| f.read().id), to.read().id);
+        dprintln!("{:?} -> {:?}", from, to);
 
-    let from_buf: *mut JmpBuf;
-    let to_buf: *const JmpBuf;
-
-    {
         to_buf = &to.read().context as *const JmpBuf;
         from_buf = from
             .map(|th| &mut th.write().context as *mut JmpBuf)
