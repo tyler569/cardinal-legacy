@@ -12,7 +12,7 @@ version = "0.1.0"
 dependencies = [
  "lazy_static",
  "multiboot2",
- "spin",
+ "spin 0.7.0",
 ]
 
 [[package]]
@@ -21,14 +21,14 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 dependencies = [
- "spin",
+ "spin 0.5.2",
 ]
 
 [[package]]
 name = "multiboot2"
-version = "0.8.2"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24835c1bfe38142c78aa2d00769b0d76239c4b583d92f817e6e0a4f3631f40d6"
+checksum = "13e9fc890ff2ef2ded9084c964b950da1bc9e26d480e446ae721607b899db1fd"
 dependencies = [
  "bitflags",
 ]
@@ -38,3 +38,9 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "652ac3743312871a5fb703f0337e68ffa3cdc28c863efad0b8dc858fa10c991b"

@@ -151,6 +151,7 @@ pub fn spawn<F>(func: F) -> ThreadArc
 pub fn exit() -> ! {
     running().map(|thread| {
         thread.write().state = State::Dead;
+        println!("exit: {:?}", thread.read().id);
     });
     schedule();
     panic!("thread continued after exitting");
@@ -208,7 +209,7 @@ pub fn schedule() {
         threads.running = Some(to.clone());
     }
 
-    dprintln!("{:?} -> {:?}", from, to);
+    dprintln!("{:?} -> {:?}", from.as_ref().map(|f| f.read().id), to.read().id);
 
     let from_buf: *mut JmpBuf;
     let to_buf: *const JmpBuf;
