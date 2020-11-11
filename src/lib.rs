@@ -95,5 +95,8 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     dprintln!("{}", panic_info);
-    loop {}
+    loop {
+        x86::disable_interrupts();
+        x86::pause();
+    }
 }
