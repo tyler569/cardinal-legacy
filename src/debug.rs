@@ -15,7 +15,7 @@ macro_rules! dprint {
 
 #[macro_export]
 macro_rules! dprintln {
-    () => ($crate::dprint!("\n"));
-    ($fmt:expr) => ($crate::dprint!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => ($crate::dprint!(concat!($fmt, "\n"), $($arg)*));
+    () => ($crate::dprint!("\r\n"));
+    ($fmt:expr) => ($crate::dprint!(concat!($fmt, "\r\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::dprint!(concat!($fmt, "\r\n"), $($arg)*));
 }

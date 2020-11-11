@@ -26,6 +26,7 @@ mod serial;
 #[cfg(target_os = "none")]
 mod allocator;
 mod interrupt;
+mod physicalmemory;
 mod thread;
 mod x86;
 
@@ -45,6 +46,10 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
 
     if let Some(boot_loader_name_tag) = boot_info.boot_loader_name_tag() {
         println!("bootloader is: {}", boot_loader_name_tag.name());
+    }
+
+    if let Some(memory_map_tag) = boot_info.memory_map_tag() {
+        physicalmemory::map_init(memory_map_tag.all_memory_areas());
     }
 
     x86::idt_init();
@@ -68,23 +73,23 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     thread::spawn(|| println!("d"));
     thread::spawn(|| println!("e"));
 
-    thread::spawn(|| for _ in 0..1000 { dprint!("a") });
-    thread::spawn(|| for _ in 0..1000 { dprint!("b") });
+    // thread::spawn(|| for _ in 0..1000 { dprint!("a") });
+    // thread::spawn(|| for _ in 0..1000 { dprint!("b") });
 
-    thread::spawn(|| {
-        for _ in 0..1000 {
-            dprint!("a");
-            thread::schedule();
-        }
-        println!();
-    });
-    thread::spawn(|| {
-        for _ in 0..1000 {
-            dprint!("b");
-            thread::schedule();
-        }
-        println!();
-    });
+    // thread::spawn(|| {
+    //     for _ in 0..1000 {
+    //         dprint!("a");
+    //         thread::schedule();
+    //     }
+    //     println!();
+    // });
+    // thread::spawn(|| {
+    //     for _ in 0..1000 {
+    //         dprint!("b");
+    //         thread::schedule();
+    //     }
+    //     println!();
+    // });
 
     x86::enable_irqs();
     thread::schedule();

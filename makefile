@@ -1,4 +1,3 @@
-
 BUILDMODE ?= debug
 
 CC := x86_64-elf-gcc
@@ -11,7 +10,7 @@ ASMOBJ := $(patsubst %.asm,%.o,$(ASMSRC))
 OBJECTS := $(ASMOBJ)
 RUSTLIB := target/x86_64-cardinal/$(BUILDMODE)/libcardinal.a
 
-.PHONY: all clean test
+.PHONY: all clean allclean test
 
 all: cardinal.iso
 
@@ -34,7 +33,10 @@ cardinal.iso: cardinal.elf grub.cfg
 clean:
 	rm -f asm/*.o
 	rm -f cardinal.elf
-	rm -f nimos.iso
+	rm -f cardinal.iso
+
+allclean: clean
+	rm -rf target
 
 test:
 	cargo test --target x86_64-unknown-linux-gnu
