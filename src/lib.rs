@@ -5,6 +5,7 @@
 #![feature(const_btree_new)]
 #![allow(dead_code)]
 
+#[cfg(target_os = "none")]
 use core::panic::PanicInfo;
 
 extern crate alloc;
@@ -22,6 +23,7 @@ mod debug;
 #[macro_use]
 mod serial;
 
+#[cfg(target_os = "none")]
 mod allocator;
 mod interrupt;
 mod thread;
@@ -78,6 +80,7 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     panic!("thread::schedule should never return to main");
 }
 
+#[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     dprintln!("{}", panic_info);
