@@ -31,7 +31,6 @@ mod x86;
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
 const USE_TIMER: bool = true;
-
 const MULTIBOOT2_MAGIC: u32 = 0x36d76289;
 
 #[no_mangle]
@@ -71,6 +70,21 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
 
     thread::spawn(|| for _ in 0..1000 { dprint!("a") });
     thread::spawn(|| for _ in 0..1000 { dprint!("b") });
+
+    thread::spawn(|| {
+        for _ in 0..1000 {
+            dprint!("a");
+            thread::schedule();
+        }
+        println!();
+    });
+    thread::spawn(|| {
+        for _ in 0..1000 {
+            dprint!("b");
+            thread::schedule();
+        }
+        println!();
+    });
 
     x86::enable_irqs();
     thread::schedule();

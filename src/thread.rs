@@ -4,7 +4,6 @@ use alloc::collections::{BTreeMap, VecDeque};
 use alloc::sync::Arc;
 use core::fmt;
 use core::mem;
-use core::ops::Drop;
 use core::ptr;
 use spin::RwLock;
 
@@ -67,11 +66,12 @@ impl Thread {
     }
 }
 
-impl Drop for Thread {
-    fn drop(&mut self) {
-        println!("dropping thread: {}", self.id);
-    }
-}
+// use core::ops::Drop;
+// impl Drop for Thread {
+//     fn drop(&mut self) {
+//         println!("dropping thread: {}", self.id);
+//     }
+// }
 
 impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -155,13 +155,12 @@ pub fn spawn<F>(func: F) -> ThreadArc
 }
 
 pub fn exit() -> ! {
-    running().map(|thread| {
+    if let Some(thread) = running() {
         let mut th = thread.write();
-        th.state = State::Dead;
         let id = th.id;
+        th.state = State::Dead;
         THREADS.write().threads.remove(&id);
-        println!("exit: {:?}", id);
-    });
+    }
     schedule();
     panic!("thread continued after exitting");
 }
@@ -225,7 +224,7 @@ pub fn schedule() {
 
         threads.running = Some(to.clone());
 
-        dprintln!("{:?} -> {:?}", from, to);
+        // dprintln!("{:?} -> {:?}", from, to);
 
         to_buf = &to.read().context as *const JmpBuf;
         from_buf = from
