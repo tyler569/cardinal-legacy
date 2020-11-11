@@ -2,10 +2,35 @@ extern "C" {
     pub fn outb(port: u16, val: u8);
     pub fn inb(port: u16) -> u8;
 
-    pub fn enable_irqs();
-    pub fn disable_irqs();
+    fn asm_enable_irqs();
+    fn asm_disable_irqs();
 
-    pub fn break_point();
+    fn asm_break_point();
+    fn asm_pause();
+}
+
+pub fn enable_interrupts() {
+    unsafe { asm_enable_irqs() };
+}
+
+pub fn disable_interrupts() {
+    unsafe { asm_disable_irqs() };
+}
+
+pub fn enable_irqs() {
+    enable_interrupts();
+}
+
+pub fn disable_irqs() {
+    disable_interrupts();
+}
+
+pub fn break_point() {
+    unsafe { asm_break_point() };
+}
+
+pub fn pause() {
+    unsafe { asm_pause() };
 }
 
 #[repr(C)]
@@ -281,8 +306,4 @@ pub fn idt_init() {
 
     // set_idt_gate(128, isr_syscall);
     set_idt_gate(130, isr_panic);
-}
-
-extern "C" {
-    pub fn pause();
 }

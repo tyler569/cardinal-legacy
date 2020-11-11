@@ -2,7 +2,7 @@
 
 section .text
 
-# outN(port, value)
+; outN(port, value)
 global outb
 outb:
     mov eax, esi
@@ -25,7 +25,7 @@ outl:
     ret
 
 
-# inN(port)
+; inN(port)
 global inb
 inb:
     mov edx, edi
@@ -45,13 +45,13 @@ inl:
     ret
 
 
-global enable_irqs
-enable_irqs:
+global asm_enable_irqs
+asm_enable_irqs:
     sti
     ret
 
-global disable_irqs
-disable_irqs:
+global asm_disable_irqs
+asm_disable_irqs:
     cli
     ret
 
@@ -60,6 +60,6 @@ asm_read_cr2:
     mov rax, cr2
     ret
 
-global pause
-pause:
+global asm_pause
+asm_pause:
     hlt

@@ -2,6 +2,41 @@ use crate::{x86,serial,thread};
 
 const DETAIL_PRINT: bool = false;
 
+const EXCEPTIONS: [&'static str; 32] = [
+    "Divide by zero",
+    "Debug",
+    "Non-maskable Interrupt",
+    "Breakpoint",
+    "Overflow Trap",
+    "Bound Range Exceeded",
+    "Invalid Opcode",
+    "Device Not Available",
+    "Double Fault",
+    "Coprocessor Segment Overrun (Deprecated)",
+    "Invalid TSS",
+    "Segment Not Present",
+    "Stack-Segment Fault",
+    "General Protection Fault",
+    "Page Fault",
+    "Reserved",
+    "x87 Floating Point Exception",
+    "Alignment Check",
+    "Machine Check",
+    "SIMD Floating-Point Exception",
+    "Virtualization Exception",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Reserved",
+    "Security Exception",
+    "Reserved",
+];
+
 #[no_mangle]
 pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     let interrupt = (*frame).interrupt_number;
@@ -30,8 +65,8 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
             x86::send_eoi(interrupt - 32);
         },
         _ => {
-            dprintln!("Interrupt {} Triggered at {:x}",
-                      interrupt, (*frame).ip);
+            dprintln!("Interrupt {} ({}) Triggered at {:x}",
+                      interrupt, EXCEPTIONS[interrupt], (*frame).ip);
             panic!();
         }
     }
@@ -43,13 +78,13 @@ pub struct InterruptDisabler;
 
 impl InterruptDisabler {
     pub fn new() -> Self {
-        unsafe { x86::disable_irqs() };
+        x86::disable_irqs();
         InterruptDisabler{}
     }
 }
 
 impl Drop for InterruptDisabler {
     fn drop(&mut self) {
-        unsafe { x86::enable_irqs() };
+        x86::enable_irqs();
     }
 }

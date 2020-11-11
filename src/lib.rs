@@ -72,10 +72,7 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     thread::spawn(|| for _ in 0..1000 { dprint!("a") });
     thread::spawn(|| for _ in 0..1000 { dprint!("b") });
 
-    unsafe {
-        x86::enable_irqs();
-    }
-
+    x86::enable_irqs();
     thread::schedule();
     panic!("thread::schedule should never return to main");
 }

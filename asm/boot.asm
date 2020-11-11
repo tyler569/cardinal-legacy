@@ -1,8 +1,7 @@
-
-; Nightingale-64
+; Cardinal
 ; A 64 bit kernel for x86_64
-; Copyright (C) 2017, Tyler Philbrick
-; vim: syntax=nasm :
+; Copyright (C) 2017-2020, Tyler Philbrick
+; vim: syntax=nasm
 
 section .rodata.multiboot
 header:
@@ -55,13 +54,13 @@ start:
     mov eax, 0x80000000
     cpuid
     cmp eax, 0x80000001
-    jb .no64
+    jb no64
 
     ; Test for long mode
     mov eax, 0x80000001
     cpuid
     test edx, 1 << 29
-    jz .no64
+    jz no64
 
 .init_page_tables:
     ; Used to be manual, removed in commit 160
@@ -113,7 +112,7 @@ start:
     jmp gdt64.codedesc:start_64
 
 
-.no64:
+no64:
     ; There is no long mode, print an error and halt
     mov dword [0xb8000], 0x4f6f4f6e ; no
     mov dword [0xb8004], 0x4f344f36 ; 64
@@ -148,7 +147,7 @@ start_higher_half:
     mov rax, 0x5f345f365f345f36 ; 6464
     mov qword [0xb8008], rax
 
-;load_tss:
+.load_tss:
     mov rax, tss64
     mov word [gdt64.tss + 2], ax
     shr rax, 16
@@ -158,10 +157,8 @@ start_higher_half:
     shr rax, 8
     mov dword [gdt64.tss + 8], eax
 
-
     mov ax, gdt64.tssdesc
     ltr ax
-
 
 extern idt_ptr
     lidt [idt_ptr]
@@ -179,10 +176,6 @@ stop:
     hlt
     jmp stop
 
-global break_point
-break_point:
-    ret
-
 section .low.bss
 ; Bootstrap low kernel stack
 align 0x10
@@ -193,18 +186,21 @@ stack_top:
 
 section .bss
 
-align 0x10
+align 0x1000
 global boot_kernel_stack
+global hhstack_guard_page
+hhstack_guard_page:
+    resb 0x1000
 boot_kernel_stack:
 hhstack:
-    resb 0x2000
+    resb 0x1000
 hhstack_top:
 
 align 0x10
-global interrupt_stack
-interrupt_stack:
-    resb 0x2000
-interrupt_stack_top:
+global int_stack
+int_stack:
+    resb 0x1000
+int_stack_top:
 
 global tss64.stack
     
@@ -212,7 +208,7 @@ section .data
 tss64:
     dd 0              ; reserved 0
 .stack:
-    dq interrupt_stack_top  ; stack pl0
+    dq int_stack_top  ; stack pl0
     dq 0              ; stack pl1
     dq 0              ; stack pl2
     dq 0              ; reserved 0
@@ -318,86 +314,76 @@ align 0x1000
 %define PAGE_FLAGS (PAGE_PRESENT | PAGE_WRITEABLE)
 
 global boot_pt_root
+global boot_p4_mapping
+global boot_p3_mapping
 boot_pt_root:
 PML4:
+boot_p4_mapping:
     dq PDPT + PAGE_FLAGS
     times 255 dq 0
     ; half
-    dq PML4 + PAGE_FLAGS
+    dq PHYS_PDPT + PAGE_FLAGS
     times 254 dq 0
     dq PDPT + PAGE_FLAGS
 PDPT:
+boot_p3_mapping:
     dq PD + PAGE_FLAGS
     times 509 dq 0
     dq PD + PAGE_FLAGS
     dq 0
-
 PD:
-    dq 0 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x200000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x400000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x600000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x800000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0xA00000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0xC00000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0xE00000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x1000000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x1200000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x1400000 + PAGE_FLAGS + PAGE_ISHUGE
-    dq 0x1600000 + PAGE_FLAGS + PAGE_ISHUGE
-    times 500 dq 0
-; PD:
-;     dq PT0 + PAGE_FLAGS
-;     dq PT1 + PAGE_FLAGS
-;     dq PT2 + PAGE_FLAGS
-;     dq PT3 + PAGE_FLAGS
-;     dq PT4 + PAGE_FLAGS
-;     dq PT5 + PAGE_FLAGS
-;     times 506 dq 0
-; 
-; PT0: ; PT0 covers 000000 -> 200000
-;     times 184 dq 0
-;     dq 0xb8000 + PAGE_FLAGS
-;     times 71 dq 0
-; %assign PAGE 0x100000 + PAGE_FLAGS
-; %rep 256
-;     dq PAGE
-; %assign PAGE PAGE + 0x1000
-; %endrep
-;     ; times 128 dq 0
-; 
-; PT1: ; PT1 covers 200000 -> 400000
-; %assign PAGE 0x200000 + PAGE_FLAGS
-; %rep 512
-;     dq PAGE
-; %assign PAGE PAGE + 0x1000
-; %endrep
-; 
-; PT2: ; PT2 covers 400000 -> 600000
-; %assign PAGE 0x400000 + PAGE_FLAGS
-; %rep 512
-;     dq PAGE
-; %assign PAGE PAGE + 0x1000
-; %endrep
-; 
-; PT3: ; PT3 covers 600000 -> 800000
-; %assign PAGE 0x600000 + PAGE_FLAGS
-; %rep 512
-;     dq PAGE
-; %assign PAGE PAGE + 0x1000
-; %endrep
-; 
-; PT4: ; PT4 covers 800000 -> A00000
-; %assign PAGE 0x800000 + PAGE_FLAGS
-; %rep 512
-;     dq PAGE
-; %assign PAGE PAGE + 0x1000
-; %endrep
-; 
-; PT5: ; PT4 covers A00000 -> C00000
-; %assign PAGE 0xA00000 + PAGE_FLAGS
-; %rep 512
-;     dq PAGE
-; %assign PAGE PAGE + 0x1000
-; %endrep
+    dq PT0 + PAGE_FLAGS
+    dq PT1 + PAGE_FLAGS
+    dq PT2 + PAGE_FLAGS
+    dq PT3 + PAGE_FLAGS
+    dq PT4 + PAGE_FLAGS
+    times 507 dq 0
 
+PT0: ; PT0 covers 000000 -> 200000
+    times 184 dq 0
+    dq 0xb8000 + PAGE_FLAGS
+    times 71 dq 0
+%assign PAGE 0x100000 + PAGE_FLAGS
+%rep 256
+    dq PAGE
+%assign PAGE PAGE + 0x1000
+%endrep
+    ; times 128 dq 0
+
+PT1: ; PT1 covers 200000 -> 400000
+%assign PAGE 0x200000 + PAGE_FLAGS
+%rep 512
+    dq PAGE
+%assign PAGE PAGE + 0x1000
+%endrep
+
+PT2: ; PT2 covers 400000 -> 600000
+%assign PAGE 0x400000 + PAGE_FLAGS
+%rep 512
+    dq PAGE
+%assign PAGE PAGE + 0x1000
+%endrep
+
+PT3: ; PT3 covers 600000 -> 800000
+%assign PAGE 0x600000 + PAGE_FLAGS
+%rep 512
+    dq PAGE
+%assign PAGE PAGE + 0x1000
+%endrep
+
+PT4: ; PT4 covers 800000 -> A00000
+%assign PAGE 0x800000 + PAGE_FLAGS
+%rep 512
+    dq PAGE
+%assign PAGE PAGE + 0x1000
+%endrep
+
+PHYS_PDPT:
+    dq 0 + PAGE_PRESENT | PAGE_WRITEABLE | PAGE_ISHUGE | PAGE_GLOBAL
+    times 511 dq 0
+
+section .text
+global read_ip
+read_ip:
+    mov rax, [rsp]
+    ret

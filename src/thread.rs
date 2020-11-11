@@ -100,18 +100,17 @@ struct ThreadSet {
     threads: BTreeMap<usize, ThreadArc>,
     running: Option<ThreadArc>,
     runnable: VecDeque<ThreadArc>,
+    idle: ThreadArc,
 }
 
 impl ThreadSet {
     fn new() -> Self {
-        let mut ts = ThreadSet {
+        ThreadSet {
             threads: BTreeMap::new(),
             runnable: VecDeque::new(),
             running: None,
-        };
-
-        ts.threads.insert(0, Arc::new(RwLock::new(Thread::new_idle())));
-        ts
+            idle: Arc::new(RwLock::new(Thread::new_idle())),
+        }
     }
 
     fn next_id(&self) -> usize {
@@ -123,7 +122,7 @@ impl ThreadSet {
     }
 
     fn idle(&self) -> ThreadArc {
-        self.get(0).unwrap()
+        self.idle.clone()
     }
 
     fn spawn(&mut self, func: Box<dyn Fn() + Send + Sync>) -> ThreadArc {
@@ -170,7 +169,7 @@ pub fn exit() -> ! {
 // Definitely panics if the thread either does not exist or does not have
 // a start_fn. I don't know what else could be done in those cases.
 fn thread_entry() {
-    unsafe { x86::enable_irqs() };
+    x86::enable_irqs();
     let start_fn: Option<Box<dyn Fn() + Send + Sync>>;
     {
         let thread = running().unwrap();
@@ -182,10 +181,8 @@ fn thread_entry() {
 
 fn thread_idle() {
     loop {
-        unsafe {
-            x86::enable_irqs();
-            x86::pause();
-        }
+        x86::enable_irqs();
+        x86::pause();
     }
 }
 
@@ -208,13 +205,20 @@ pub fn schedule() {
         let to_opt = threads.next_runnable();
         from = threads.running.clone();
 
-        if let Some(arc) = from.as_ref() {
-            if arc.read().is_running() {
+        if let Some(from_arc) = from.as_ref() {
+            // If _from_ is write locked, we have to try again later
+            let from_guard = match from_arc.try_read() {
+                Some(guard) => guard,
+                None => return,
+            };
+            // If the current thread is still running, let it run again
+            if from_guard.is_running() {
+                // Unless there's no one to switch to, in which case
+                // just return and keep doing work.
                 if to_opt.is_none() {
-                    // No one to swap to and work to be done
                     return;
                 }
-                threads.set_runnable(arc.clone());
+                threads.set_runnable(from_arc.clone());
             }
         }
         to = to_opt.unwrap_or(threads.idle());
