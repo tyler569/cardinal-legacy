@@ -1,4 +1,5 @@
 use crate::sync::RwLock;
+use crate::x86;
 use core::fmt;
 use core::ops::Range;
 
@@ -22,7 +23,7 @@ impl PhysicalAddress {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-struct PhysicalRange {
+pub struct PhysicalRange {
     base: PhysicalAddress,
     top: PhysicalAddress,
 }
@@ -142,7 +143,7 @@ impl PhysicalMap {
         }
     }
 
-    fn set(&mut self, index: usize, v: PageRef) {
+    fn set_index(&mut self, index: usize, v: PageRef) {
         if index >= Self::PAGE_COUNT {
             return;
         }
@@ -154,10 +155,18 @@ impl PhysicalMap {
         }
     }
 
-    fn set_range(&mut self, r: Range<usize>, v: PageRef) {
+    fn set_index_range(&mut self, r: Range<usize>, v: PageRef) {
         for i in r {
-            self.set(i, v);
+            self.set_index(i, v);
         }
+    }
+
+    fn set(&mut self, p: PhysicalAddress, v: PageRef) {
+        self.set_index(p.page_index(), v)
+    }
+
+    fn set_range(&mut self, p: PhysicalRange, v: PageRef) {
+        self.set_index_range(p.page_range(), v)
     }
 
     fn incref(&mut self, p: PhysicalAddress) {
@@ -190,6 +199,25 @@ impl PhysicalMap {
     fn free(&mut self, p: PhysicalAddress) {
         self.decref(p);
     }
+
+    fn summarize(&self) {
+        let mut in_use = 0;
+        let mut available = 0;
+        let mut leaked = 0;
+
+        for (_i, r) in self.map.iter().enumerate() {
+            if r.in_use() {
+                in_use += 0x1000;
+            } else if r.is_usable() {
+                available += 0x1000;
+            } else if *r == PageRef::Leak {
+                leaked += 0x1000;
+            }
+        }
+
+        println!("in_use: {:x} available: {:x} leaked: {:x}",
+                 in_use, available, leaked);
+    }
 }
 
 lazy_static! {
@@ -203,8 +231,21 @@ pub fn map_init(areas: multiboot2::MemoryAreaIter<'_>) {
 
         println!("memory map: {:>10x} {:>10x} {:?}", area.start_address(), area.size(), r);
 
-        PHYSICAL_MEMORY_MAP.write().set_range(range.page_range(), r);
+        PHYSICAL_MEMORY_MAP.write().set_range(range, r);
     }
+
+    let kernel_range = PhysicalRange {
+        base: PhysicalAddress(x86::kernel_base()),
+        top: PhysicalAddress(x86::kernel_top()),
+    };
+
+    println!("Leaking kernel: {:x?}", kernel_range);
+    
+    PHYSICAL_MEMORY_MAP.write().set_range(kernel_range, PageRef::Leak);
+}
+
+pub fn leak(r: PhysicalRange) {
+    PHYSICAL_MEMORY_MAP.write().set_range(r, PageRef::Leak);
 }
 
 pub fn alloc() -> PhysicalAddress {

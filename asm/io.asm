@@ -63,3 +63,15 @@ asm_read_cr2:
 global asm_pause
 asm_pause:
     hlt
+
+global asm_kernel_base
+extern _kernel_phy_base
+asm_kernel_base:
+    mov rax, _kernel_phy_base
+    ret
+
+global asm_kernel_top
+extern _kernel_phy_top
+asm_kernel_top:
+    mov rax, _kernel_phy_top
+    ret

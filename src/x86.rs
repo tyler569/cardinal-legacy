@@ -7,6 +7,9 @@ extern "C" {
 
     fn asm_break_point();
     fn asm_pause();
+
+    fn asm_kernel_base() -> usize;
+    fn asm_kernel_top() -> usize;
 }
 
 pub fn enable_interrupts() {
@@ -31,6 +34,14 @@ pub fn break_point() {
 
 pub fn pause() {
     unsafe { asm_pause() };
+}
+
+pub fn kernel_base() -> usize {
+    unsafe { asm_kernel_base() }
+}
+
+pub fn kernel_top() -> usize {
+    unsafe { asm_kernel_top() }
 }
 
 #[repr(C)]
