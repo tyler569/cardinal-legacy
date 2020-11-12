@@ -12,6 +12,9 @@ extern crate alloc;
 use alloc::boxed::Box;
 
 #[macro_use]
+extern crate bitflags;
+
+#[macro_use]
 extern crate lazy_static;
 
 pub use spin as sync;
@@ -78,6 +81,14 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     thread::spawn(|| println!("c"));
     thread::spawn(|| println!("d"));
     thread::spawn(|| println!("e"));
+
+    let x = 10;
+    thread::spawn(move || println!("{}", x));
+
+    fn thread_opener() {
+        println!("bare fn");
+    }
+    thread::spawn(thread_opener);
 
     // thread::spawn(|| for _ in 0..1000 { dprint!("a") });
     // thread::spawn(|| for _ in 0..1000 { dprint!("b") });

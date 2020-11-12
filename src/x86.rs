@@ -10,6 +10,12 @@ extern "C" {
 
     fn asm_kernel_base() -> usize;
     fn asm_kernel_top() -> usize;
+
+    #[ffi_returns_twice]
+    pub fn set_jump(buf: *mut JmpBuf) -> isize;
+    pub fn long_jump(buf: *const JmpBuf, value: isize) -> !;
+
+    fn asm_read_cr2() -> usize;
 }
 
 pub fn enable_interrupts() {
@@ -42,6 +48,16 @@ pub fn kernel_base() -> usize {
 
 pub fn kernel_top() -> usize {
     unsafe { asm_kernel_top() }
+}
+
+bitflags! {
+    pub struct FaultCode: u16 {
+        const PRESENT  = 0x01;
+        const WRITE    = 0x02;
+        const USERMODE = 0x04;
+        const RESERVED = 0x08;
+        const IFETCH   = 0x10;
+    }
 }
 
 #[repr(C)]
@@ -89,16 +105,6 @@ impl JmpBuf {
     pub fn new() -> JmpBuf {
         Default::default()
     }
-}
-
-extern "C" {
-    #[ffi_returns_twice]
-    pub fn set_jump(buf: *mut JmpBuf) -> isize;
-    pub fn long_jump(buf: *const JmpBuf, value: isize) -> !;
-}
-
-extern "C" {
-    fn asm_read_cr2() -> usize;
 }
 
 pub fn read_cr2() -> usize {

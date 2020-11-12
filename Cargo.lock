@@ -10,6 +10,7 @@ checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 name = "cardinal"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "lazy_static",
  "multiboot2",
  "spin 0.7.0",
