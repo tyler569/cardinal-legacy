@@ -149,7 +149,8 @@ fn running() -> Option<ThreadArc> {
 }
 
 pub fn spawn<F>(func: F) -> ThreadArc
-    where F: Fn() + Send + Sync + 'static
+where
+    F: Fn() + Send + Sync + 'static,
 {
     THREADS.write().spawn(Box::new(func))
 }

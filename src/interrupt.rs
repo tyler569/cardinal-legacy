@@ -1,4 +1,4 @@
-use crate::{x86,serial,thread};
+use crate::{serial, thread, x86};
 
 const DETAIL_PRINT: bool = false;
 
@@ -51,22 +51,26 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
         14 => {
             dprintln!("Page fault at {:x}", x86::read_cr2());
             panic!();
-        },
+        }
         32 => {
             x86::send_eoi(interrupt - 32);
             thread::schedule();
-        },
+        }
         36 => {
             let c = serial::GLOBAL_SERIAL.lock().read_byte();
             dprintln!("serial read: {}", c as char);
             x86::send_eoi(interrupt - 32);
-        },
+        }
         32..=48 => {
             x86::send_eoi(interrupt - 32);
-        },
+        }
         _ => {
-            dprintln!("Interrupt {} ({}) Triggered at {:x}",
-                      interrupt, EXCEPTIONS[interrupt], (*frame).ip);
+            dprintln!(
+                "Interrupt {} ({}) Triggered at {:x}",
+                interrupt,
+                EXCEPTIONS[interrupt],
+                (*frame).ip
+            );
             panic!();
         }
     }
@@ -79,7 +83,7 @@ pub struct InterruptDisabler;
 impl InterruptDisabler {
     pub fn new() -> Self {
         x86::disable_irqs();
-        InterruptDisabler{}
+        InterruptDisabler {}
     }
 }
 

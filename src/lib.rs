@@ -28,6 +28,7 @@ mod allocator;
 mod interrupt;
 mod physicalmemory;
 mod thread;
+mod virtualmemory;
 mod x86;
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
@@ -40,9 +41,7 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
 
     assert_eq!(multiboot_magic, MULTIBOOT2_MAGIC);
 
-    let boot_info = unsafe {
-        multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET)
-    };
+    let boot_info = unsafe { multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET) };
 
     if let Some(boot_loader_name_tag) = boot_info.boot_loader_name_tag() {
         println!("bootloader is: {}", boot_loader_name_tag.name());
@@ -50,6 +49,10 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
 
     if let Some(memory_map_tag) = boot_info.memory_map_tag() {
         physicalmemory::map_init(memory_map_tag.all_memory_areas());
+    }
+
+    for module_tag in boot_info.module_tags() {
+        println!("module: {}", module_tag.name());
     }
 
     x86::idt_init();
@@ -66,6 +69,9 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     }
     let closed_fn = return_a_closure(10);
     println!("Call a closure: {}", closed_fn(10));
+
+    let test_page = physicalmemory::alloc();
+    println!("{:x?}", test_page);
 
     thread::spawn(|| println!("a"));
     thread::spawn(|| println!("b"));
