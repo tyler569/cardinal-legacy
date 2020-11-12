@@ -1,9 +1,13 @@
-// #pragma once
-// #define VMM_KERNEL_BASE 0xFFFFFFFF80000000
-//
+const PAGE_SIZE: usize = 0x1000;
+
 struct VirtualAddress(usize);
 
 impl VirtualAddress {
+}
+
+struct PageTableEntry(usize);
+
+impl PageTableEntry {
     const PRESENT: usize = 0x01;
     const WRITEABLE: usize = 0x02;
     const USERMODE: usize = 0x04;
@@ -11,39 +15,26 @@ impl VirtualAddress {
     const DIRTY: usize = 0x40;
     const ISHUGE: usize = 0x80;
     const GLOBAL: usize = 0x100;
+
+    const OS_RESERVED1: usize = 0x200;
+    const OS_RESERVED2: usize = 0x400;
+    const OS_RESERVED3: usize = 0x800;
+
+    const COPYONWRITE: usize = Self::OS_RESERVED1;
+    const UNBACKED: usize = 0x1000000;
 }
-//
-// #define PAGE_SIZE 0x1000
-//
-// #define PAGE_OS_RESERVED1 0x200
-// #define PAGE_OS_RESERVED2 0x400
-// #define PAGE_OS_RESERVED3 0x800
-//
-// #define PAGE_COPYONWRITE PAGE_OS_RESERVED1
-// #define PAGE_STACK_GUARD PAGE_OS_RESERVED2
-//
-// #define PAGE_UNBACKED 0x100000
-//
-// #define PAGE_OFFSET_4K 07777       // 4           * 3 = 12
-// #define PAGE_MASK_4K (~PAGE_OFFSET_4K)
-// #define PAGE_FLAGS_MASK 0xFF00000000000FFF
-// #define PAGE_ADDR_MASK 0x00FFFFFFFFFFF000
-//
-// enum x86_fault {
-//         F_PRESENT  = 0x01,
-//         F_WRITE    = 0x02,
-//         F_USERMODE = 0x04,
-//         F_RESERVED = 0x08,
-//         F_IFETCH   = 0x10,
-// };
+
+const PAGE_OFFSET_4K: usize = 0xFFF;
+const PAGE_MASK_4K: usize = !PAGE_OFFSET_4K;
+const PAGE_FLAGS_MASK: usize = 0xFF00000000000FFF;
+const PAGE_ADDR_MASK: usize = 0x00FFFFFFFFFFF000;
+
 //
 // enum vmm_copy_op {
 //         COPY_COW,
 //         COPY_SHARED,
 //         COPY_EAGER,
 // };
-//
-// struct process;
 //
 // phys_addr_t vmm_resolve(virt_addr_t vma);
 // phys_addr_t vmm_virt_to_phy(virt_addr_t vma);
