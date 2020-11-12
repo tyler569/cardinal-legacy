@@ -1,6 +1,6 @@
+use crate::sync::RwLock;
 use core::fmt;
 use core::ops::Range;
-use crate::sync::RwLock;
 
 const PAGE_SIZE: usize = 0x1000;
 
@@ -47,10 +47,9 @@ impl PhysicalRange {
     }
 
     fn page_range(&self) -> Range<usize> {
-        self.base_page_index() .. self.top_page_index()
+        self.base_page_index()..self.top_page_index()
     }
 }
-
 
 /// PageRef is designed to resemble a Rust enum, but isn't one to ensure it
 /// fits in a single byte. It does this by having a limited range, supporting
@@ -119,13 +118,11 @@ impl PageRef {
 impl fmt::Debug for PageRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(count) = self.count() {
-            f.debug_tuple("PageRef")
-                .field(&count)
-                .finish()
+            f.debug_tuple("PageRef").field(&count).finish()
         } else {
             match *self {
                 PageRef::NoMemory => f.write_str("NoMemory"),
-                PageRef::Leak     => f.write_str("Leak"),
+                PageRef::Leak => f.write_str("Leak"),
                 _ => panic!("unreachable"),
             }
         }
@@ -140,7 +137,9 @@ impl PhysicalMap {
     const PAGE_COUNT: usize = 0x4000;
 
     fn new() -> Self {
-        Self { map: [PageRef::NoMemory; PhysicalMap::PAGE_COUNT] }
+        Self {
+            map: [PageRef::NoMemory; PhysicalMap::PAGE_COUNT],
+        }
     }
 
     fn set(&mut self, index: usize, v: PageRef) {
@@ -151,7 +150,7 @@ impl PhysicalMap {
         let current = self.map[index];
 
         if current == PageRef::NoMemory || v == PageRef::Leak {
-            self.map[index] = v; 
+            self.map[index] = v;
         }
     }
 
@@ -194,14 +193,15 @@ impl PhysicalMap {
 }
 
 lazy_static! {
-    static ref PHYSICAL_MEMORY_MAP: RwLock<PhysicalMap> =
-        RwLock::new(PhysicalMap::new());
+    static ref PHYSICAL_MEMORY_MAP: RwLock<PhysicalMap> = RwLock::new(PhysicalMap::new());
 }
 
 pub fn map_init(areas: multiboot2::MemoryAreaIter<'_>) {
     for area in areas {
         let range = PhysicalRange::from_multiboot_area(area);
         let r = PageRef::from_multiboot(area.typ());
+
+        println!("memory map: {:>10x} {:>10x} {:?}", area.start_address(), area.size(), r);
 
         PHYSICAL_MEMORY_MAP.write().set_range(range.page_range(), r);
     }
