@@ -1,4 +1,4 @@
-const PAGE_SIZE: usize = 0x1000;
+// use super::PAGE_SIZE;
 
 pub struct VirtualAddress(pub usize);
 
@@ -331,7 +331,7 @@ const PAGE_ADDR_MASK: usize = 0x00FFFFFFFFFFF000;
 // impl PageTable {
 //     pub fn new() -> Self {
 //         Self {
-//             root: physicalmemory::alloc_zero(),
+//             root: phy::alloc_zero(),
 //         }
 //     }
 //

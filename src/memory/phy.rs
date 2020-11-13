@@ -1,9 +1,9 @@
 use crate::sync::RwLock;
+use crate::PHY_OFFSET;
 use crate::x86;
 use core::fmt;
 use core::ops::Range;
-
-const PAGE_SIZE: usize = 0x1000;
+use super::PAGE_SIZE;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct PhysicalAddress(pub usize);
@@ -24,11 +24,15 @@ impl PhysicalAddress {
     fn page_index_up(self) -> usize {
         self.page_round_up() / PAGE_SIZE
     }
-}
 
-// write to physical pages in the 1:1 map
-// impl Deref for PhysicalAddress {
-// }
+    unsafe fn write<T>(self, v: T) {
+        *((self.0 + PHY_OFFSET) as *mut T) = v
+    }
+
+    unsafe fn read<T: Copy>(self) -> T {
+        *((self.0 + PHY_OFFSET) as *const T)
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct PhysicalRange {
@@ -279,6 +283,12 @@ pub fn leak(r: PhysicalRange) {
 
 pub fn alloc() -> PhysicalAddress {
     PHYSICAL_MEMORY_MAP.write().alloc().expect("Out of memory")
+}
+
+pub fn alloc_zero() -> PhysicalAddress {
+    let page = PHYSICAL_MEMORY_MAP.write().alloc().expect("Out of memory");
+    unsafe { page.write([0; PAGE_SIZE]) };
+    page
 }
 
 pub fn free(p: PhysicalAddress) {
