@@ -31,10 +31,12 @@ mod allocator;
 mod interrupt;
 mod memory;
 mod thread;
+mod util;
 mod x86;
 
 pub use memory::phy::PhysicalAddress;
 pub use memory::virt::VirtualAddress;
+pub use util::{round_up, round_down};
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
 const PHY_OFFSET: usize = 0xFFFF_8000_0000_0000;

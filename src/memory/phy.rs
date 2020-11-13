@@ -1,8 +1,8 @@
 use crate::sync::RwLock;
-use crate::PHY_OFFSET;
-use crate::x86;
+use crate::{round_up, round_down, PHY_OFFSET, x86};
 use core::fmt;
 use core::ops::Range;
+// use core::iter::Iterator;
 use super::PAGE_SIZE;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -10,11 +10,11 @@ pub struct PhysicalAddress(pub usize);
 
 impl PhysicalAddress {
     fn page(self) -> usize {
-        self.0 & !0xFFF
+        round_down(self.0, PAGE_SIZE)
     }
 
     fn page_round_up(self) -> usize {
-        (self.0 + 0xFFF) & !0xFFF
+        round_up(self.0, PAGE_SIZE)
     }
 
     fn page_index(self) -> usize {
@@ -62,6 +62,15 @@ impl PhysicalRange {
     fn page_range(&self) -> Range<usize> {
         self.base_page_index()..self.top_page_index()
     }
+
+    // fn iter(&self) -> impl Iterator<Item = PhysicalAddress> {
+    //     self.base..self.top
+    // }
+
+    // fn iter_pages(&self) -> impl Iterator<Item = PhysicalAddress> {
+    //     let page_base = round_down(self.base);
+    //     (page_base..self.top).step_by(PAGE_SIZE)
+    // }
 }
 
 impl fmt::Debug for PhysicalRange {

@@ -1,13 +1,6 @@
 use alloc::alloc::{GlobalAlloc, Layout};
-
 use crate::sync::{Mutex, MutexGuard};
-
-fn round_up(u: usize, power: usize) -> usize {
-    if !power.is_power_of_two() {
-        panic!("can't round except to power of two");
-    }
-    (u + power - 1) & !(power - 1)
-}
+use crate::round_up;
 
 const HEAP_LEN: usize = 128 * 1024;
 static mut EARLY_HEAP: [u8; HEAP_LEN] = [0u8; HEAP_LEN];
