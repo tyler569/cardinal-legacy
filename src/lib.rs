@@ -83,40 +83,23 @@ pub extern "C" fn kernel_main(
     let test_page = memory::phy::alloc();
     println!("{:x?}", test_page);
 
-    thread::spawn(|| println!("a"));
-    thread::spawn(|| println!("b"));
-    thread::spawn(|| println!("c"));
-    thread::spawn(|| println!("d"));
-    thread::spawn(|| println!("e"));
+    thread::spawn(|| print!("a"));
+    thread::spawn(|| print!("b"));
+    thread::spawn(|| print!("c"));
+    thread::spawn(|| print!("d"));
+    thread::spawn(|| print!("e"));
 
     let x = 10;
     thread::spawn(move || println!("{}", x));
 
-    fn thread_opener() {
-        println!("bare fn");
-    }
-    thread::spawn(thread_opener);
-
     thread::spawn(|| {
-        for _ in 0..1000 {
-            dprint!("a")
-        }
-    });
-    thread::spawn(|| {
-        for _ in 0..1000 {
-            dprint!("b")
-        }
-    });
-
-    thread::spawn(|| {
-        for _ in 0..1000 {
+        for _ in 0..100 {
             dprint!("a");
             thread::schedule();
         }
-        println!();
     });
     thread::spawn(|| {
-        for _ in 0..1000 {
+        for _ in 0..100 {
             dprint!("b");
             thread::schedule();
         }
