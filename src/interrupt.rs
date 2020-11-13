@@ -2,7 +2,7 @@ use crate::{serial, thread, x86};
 
 const DETAIL_PRINT: bool = false;
 
-const EXCEPTIONS: [&'static str; 32] = [
+const EXCEPTIONS: [&str; 32] = [
     "Divide by zero",
     "Debug",
     "Non-maskable Interrupt",
@@ -47,6 +47,7 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
         dprintln!("{:#x?}", f);
     }
 
+    #[allow(clippy::match_overlapping_arm)]
     match interrupt {
         14 => {
             dprintln!("Page fault at {:x}", x86::read_cr2());

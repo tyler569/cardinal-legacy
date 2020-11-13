@@ -71,7 +71,7 @@ pub extern "C" fn kernel_main(
     x86::timer_init(1000);
     x86::unmask_irq(0);
 
-    println!("Let's test some formatting {}", 1234);
+    println!("Let's test some formatting {:x}", multiboot_magic);
     let a = |x| x + 10;
     println!("Call a lambda: {}", a(10));
     fn return_a_closure(x: i32) -> Box<dyn FnOnce(i32) -> i32> {

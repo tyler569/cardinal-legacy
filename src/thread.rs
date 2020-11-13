@@ -118,7 +118,7 @@ impl ThreadSet {
     }
 
     fn get(&self, id: usize) -> Option<ThreadArc> {
-        self.threads.get(&id).map(|arc| arc.clone())
+        self.threads.get(&id).cloned()
     }
 
     fn idle(&self) -> ThreadArc {
@@ -222,7 +222,7 @@ pub fn schedule() {
                 threads.set_runnable(from_arc.clone());
             }
         }
-        to = to_opt.unwrap_or(threads.idle());
+        to = to_opt.unwrap_or_else(|| threads.idle());
 
         threads.running = Some(to.clone());
 
