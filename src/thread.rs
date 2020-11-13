@@ -172,7 +172,7 @@ fn thread_entry() {
     x86::enable_irqs();
     let start_fn: Option<Box<dyn Fn() + Send + Sync>>;
     {
-        let thread = running().unwrap();
+        let thread = running().expect("Attempt to enter a thread that does not exist");
         start_fn = mem::replace(&mut thread.write().start_fn, None);
     }
     (start_fn.unwrap())();
