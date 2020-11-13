@@ -29,10 +29,12 @@ mod serial;
 #[cfg(target_os = "none")]
 mod allocator;
 mod interrupt;
-mod physicalmemory;
+mod memory;
 mod thread;
-mod virtualmemory;
 mod x86;
+
+pub use memory::phy::PhysicalAddress;
+pub use memory::virt::VirtualAddress;
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
 const USE_TIMER: bool = true;
@@ -51,7 +53,7 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     }
 
     if let Some(memory_map_tag) = boot_info.memory_map_tag() {
-        physicalmemory::map_init(memory_map_tag.all_memory_areas());
+        memory::phy::map_init(memory_map_tag.all_memory_areas());
     }
 
     for module_tag in boot_info.module_tags() {
@@ -73,7 +75,7 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     let closed_fn = return_a_closure(10);
     println!("Call a closure: {}", closed_fn(10));
 
-    let test_page = physicalmemory::alloc();
+    let test_page = memory::phy::alloc();
     println!("{:x?}", test_page);
 
     thread::spawn(|| println!("a"));
@@ -90,23 +92,23 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     }
     thread::spawn(thread_opener);
 
-    // thread::spawn(|| for _ in 0..1000 { dprint!("a") });
-    // thread::spawn(|| for _ in 0..1000 { dprint!("b") });
+    thread::spawn(|| for _ in 0..1000 { dprint!("a") });
+    thread::spawn(|| for _ in 0..1000 { dprint!("b") });
 
-    // thread::spawn(|| {
-    //     for _ in 0..1000 {
-    //         dprint!("a");
-    //         thread::schedule();
-    //     }
-    //     println!();
-    // });
-    // thread::spawn(|| {
-    //     for _ in 0..1000 {
-    //         dprint!("b");
-    //         thread::schedule();
-    //     }
-    //     println!();
-    // });
+    thread::spawn(|| {
+        for _ in 0..1000 {
+            dprint!("a");
+            thread::schedule();
+        }
+        println!();
+    });
+    thread::spawn(|| {
+        for _ in 0..1000 {
+            dprint!("b");
+            thread::schedule();
+        }
+        println!();
+    });
 
     x86::enable_irqs();
     thread::schedule();

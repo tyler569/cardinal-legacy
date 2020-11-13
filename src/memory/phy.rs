@@ -5,24 +5,33 @@ use core::ops::Range;
 
 const PAGE_SIZE: usize = 0x1000;
 
-fn round_up_page(p: usize) -> usize {
-    (p + (PAGE_SIZE - 1)) & !(PAGE_SIZE - 1)
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct PhysicalAddress(usize);
+pub struct PhysicalAddress(pub usize);
 
 impl PhysicalAddress {
-    fn page_index(&self) -> usize {
+    fn page(self) -> usize {
+        self.0 & !0xFFF
+    }
+
+    fn page_round_up(self) -> usize {
+        (self.0 + 0xFFF) & !0xFFF
+    }
+
+    fn page_index(self) -> usize {
         self.0 / PAGE_SIZE
     }
 
-    fn page_index_up(&self) -> usize {
-        round_up_page(self.0) / PAGE_SIZE
+    fn page_index_up(self) -> usize {
+        self.page_round_up() / PAGE_SIZE
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+// write to physical pages in the 1:1 map
+// impl Deref for PhysicalAddress {
+// }
+
+
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct PhysicalRange {
     base: PhysicalAddress,
     top: PhysicalAddress,
@@ -51,6 +60,17 @@ impl PhysicalRange {
         self.base_page_index()..self.top_page_index()
     }
 }
+
+impl fmt::Debug for PhysicalRange {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.base.fmt(fmt)?;
+        write!(fmt, "..")?;
+        self.top.fmt(fmt)?;
+        Ok(())
+    }
+}
+
+// ----------------------------------------------------------------------- //
 
 /// PageRef is designed to resemble a Rust enum, but isn't one to ensure it
 /// fits in a single byte. It does this by having a limited range, supporting

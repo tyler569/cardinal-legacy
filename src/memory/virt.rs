@@ -1,6 +1,6 @@
 const PAGE_SIZE: usize = 0x1000;
 
-struct VirtualAddress(usize);
+pub struct VirtualAddress(pub usize);
 
 impl VirtualAddress {
 }
@@ -318,3 +318,94 @@ const PAGE_ADDR_MASK: usize = 0x00FFFFFFFFFFF000;
 //
 //         return FAULT_CRASH;
 // }
+
+// ======================================================================= //
+
+// enum PagingError {
+//     Other(&'static str),
+// }
+// 
+// struct PageTable {
+//     root: PhysicalAddress,
+// }
+// 
+// impl PageTable {
+//     pub fn new() -> Self {
+//         Self {
+//             root: physicalmemory::alloc_zero(),
+//         }
+//     }
+// 
+//     pub fn fork() -> Self {
+//         Self {
+//             root: fork_this_address_space(),
+//         }
+//     }
+// 
+//     pub fn pte_mut(&mut self, v: VirtualAddress) -> Option<&mut PageTableEntry> {
+//         Self::pte_mut_recursive(self.root, v, 4, false)
+//     }
+// 
+//     pub fn pte(&self, v: VirtualAddress) -> Option<PageTableEntry> {
+//         Self::pte_mut_recursive(self.root, v, 4, false).cloned()
+//     }
+// 
+//     pub fn resolve(&self, v: VirtualAddress) -> Option<PhysicalAddress> {
+//         self.pte(v).page().map(|a| a | v.page_offset())
+//     }
+// 
+//     pub fn map(&mut self, v: VirtualAddress, p: PhysicalAddress, flags: usize) -> Result<(), PagingError> {
+//         *self.pte_mut(v)? = p | flags
+//     }
+// 
+//     pub fn map_range(&mut self, v: VirtualAddress, p: Range<PhysicalAddress>) -> Result<(), PagingError> {
+//         for (i, page) in p.enumerate() {
+//             self.map(v + i * PAGE_SIZE, page)?
+//         }
+//     }
+// 
+//     pub fn unmap(&mut self, v: VirtualAddress) -> Result<(), PagingError> {
+//         self.map(v, 0, 0)
+//     }
+// 
+//     pub fn unmap_range(&mut self, v: Range<VirtualAddress>) -> Result<(), PagingError> {
+//         for page in v {
+//             self.unmap(page)?
+//         }
+//     }
+// 
+//     fn offset(v: VirtualAddress, level: usize) -> usize {
+//         (v.0 >> (12 + level * 9)) & 0xFFF;
+//     }
+// 
+//     fn pte_mut_recursuve(root: PhysicalAddress, v: VirtualAddress, level: usize, create: bool) -> Result<&mut PageTableEntry, PagingError> {
+//         let level_offset = Self::offset(v, level);
+//         let entry = &mut root[offset];
+//         if level == 1 {
+//             return Ok(entry);
+//         }
+//         if !(root[offset] & PageTableEntry::PRESENT) {
+//             if create {
+//                 Self::make_next_table(entry, v.is_higher_half());
+//             } else {
+//                 return Err(Other("Page Not Present"));
+//             }
+//         }
+//         Self::pte_mut_recursive(entry.page(), v, level-1, create)
+//     }
+// 
+//     fn make_next_table(p: &mut PageTableEntry, kernel: bool) {
+//         let flags = if kernel {
+//             PageTableEntry::TABLE_FLAGS
+//         } else {
+//             PageTableEntry::TABLE_FLAGS | PageTableEntry::USERMODE
+//         }
+//         *p = physicalmemory::alloc_zero() | flags;
+//     }
+// 
+//     fn pte_mut_create(&mut self, v: VirtualAddress) -> &mut PageTableEntry {
+//         Self::pte_mut_recursive(self.root, v, 4, true).expect("pte_mut_recursive failed")
+//     }
+// }
+
+
