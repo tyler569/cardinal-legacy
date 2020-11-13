@@ -37,16 +37,21 @@ pub use memory::phy::PhysicalAddress;
 pub use memory::virt::VirtualAddress;
 
 const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
+const PHY_OFFSET: usize = 0xFFFF_8000_0000_0000;
 const USE_TIMER: bool = true;
 const MULTIBOOT2_MAGIC: u32 = 0x36d76289;
 
 #[no_mangle]
-pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! {
+pub extern "C" fn kernel_main(
+    multiboot_magic: u32,
+    multiboot_info: usize,
+) -> ! {
     println!("Hello World from the Cardinal Operating System");
 
     assert_eq!(multiboot_magic, MULTIBOOT2_MAGIC);
 
-    let boot_info = unsafe { multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET) };
+    let boot_info =
+        unsafe { multiboot2::load_with_offset(multiboot_info, LOAD_OFFSET) };
 
     if let Some(boot_loader_name_tag) = boot_info.boot_loader_name_tag() {
         println!("bootloader is: {}", boot_loader_name_tag.name());
@@ -92,8 +97,16 @@ pub extern "C" fn kernel_main(multiboot_magic: u32, multiboot_info: usize) -> ! 
     }
     thread::spawn(thread_opener);
 
-    thread::spawn(|| for _ in 0..1000 { dprint!("a") });
-    thread::spawn(|| for _ in 0..1000 { dprint!("b") });
+    thread::spawn(|| {
+        for _ in 0..1000 {
+            dprint!("a")
+        }
+    });
+    thread::spawn(|| {
+        for _ in 0..1000 {
+            dprint!("b")
+        }
+    });
 
     thread::spawn(|| {
         for _ in 0..1000 {

@@ -30,7 +30,6 @@ impl PhysicalAddress {
 // impl Deref for PhysicalAddress {
 // }
 
-
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct PhysicalRange {
     base: PhysicalAddress,
@@ -235,13 +234,16 @@ impl PhysicalMap {
             }
         }
 
-        println!("in_use: {:x} available: {:x} leaked: {:x}",
-                 in_use, available, leaked);
+        println!(
+            "in_use: {:x} available: {:x} leaked: {:x}",
+            in_use, available, leaked
+        );
     }
 }
 
 lazy_static! {
-    static ref PHYSICAL_MEMORY_MAP: RwLock<PhysicalMap> = RwLock::new(PhysicalMap::new());
+    static ref PHYSICAL_MEMORY_MAP: RwLock<PhysicalMap> =
+        RwLock::new(PhysicalMap::new());
 }
 
 pub fn map_init(areas: multiboot2::MemoryAreaIter<'_>) {
@@ -249,7 +251,12 @@ pub fn map_init(areas: multiboot2::MemoryAreaIter<'_>) {
         let range = PhysicalRange::from_multiboot_area(area);
         let r = PageRef::from_multiboot(area.typ());
 
-        println!("memory map: {:>10x} {:>10x} {:?}", area.start_address(), area.size(), r);
+        println!(
+            "memory map: {:>10x} {:>10x} {:?}",
+            area.start_address(),
+            area.size(),
+            r
+        );
 
         PHYSICAL_MEMORY_MAP.write().set_range(range, r);
     }
@@ -260,8 +267,10 @@ pub fn map_init(areas: multiboot2::MemoryAreaIter<'_>) {
     };
 
     println!("Leaking kernel: {:x?}", kernel_range);
-    
-    PHYSICAL_MEMORY_MAP.write().set_range(kernel_range, PageRef::Leak);
+
+    PHYSICAL_MEMORY_MAP
+        .write()
+        .set_range(kernel_range, PageRef::Leak);
 }
 
 pub fn leak(r: PhysicalRange) {

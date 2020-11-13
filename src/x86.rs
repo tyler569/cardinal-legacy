@@ -255,7 +255,8 @@ fn raw_set_idt_gate(irq: usize, handler: u64, flags: u64, cs: u64, ist: u64) {
     let func_mid = (func >> 16) & 0xFFFF;
     let func_high = func >> 32;
 
-    gate[0] = func_low | (cs << 16) | (ist << 32) | (flags << 40) | (func_mid << 48);
+    gate[0] =
+        func_low | (cs << 16) | (ist << 32) | (flags << 40) | (func_mid << 48);
     gate[1] = func_high;
 }
 
