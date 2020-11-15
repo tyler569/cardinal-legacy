@@ -1,9 +1,4 @@
-use crate::memory::{
-    PAGE_SIZE,
-    PhysicalAddress,
-    PhysicalPage,
-    PhysicalRange,
-};
+use crate::memory::{PhysicalAddress, PhysicalPage, PhysicalRange, PAGE_SIZE};
 use crate::sync::RwLock;
 use crate::x86;
 use core::fmt;
@@ -111,7 +106,11 @@ impl PhysicalMap {
         }
     }
 
-    fn set_index_range(&mut self, r: impl Iterator<Item = PhysicalPage>, v: PageRef) {
+    fn set_index_range(
+        &mut self,
+        r: impl Iterator<Item = PhysicalPage>,
+        v: PageRef,
+    ) {
         for p in r {
             self.set_index(p.index(), v);
         }

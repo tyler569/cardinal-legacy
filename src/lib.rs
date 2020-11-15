@@ -88,7 +88,7 @@ pub extern "C" fn kernel_main(
     thread::spawn(|| print!("d"));
     thread::spawn(|| print!("e"));
 
-    let x = 10;
+    let x = "Hello World";
     thread::spawn(move || println!("{}", x));
 
     thread::spawn(|| {

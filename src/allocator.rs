@@ -1,5 +1,5 @@
-use crate::util::round_up;
 use crate::sync::{Mutex, MutexGuard};
+use crate::util::round_up;
 use alloc::alloc::{GlobalAlloc, Layout};
 
 const HEAP_LEN: usize = 128 * 1024;

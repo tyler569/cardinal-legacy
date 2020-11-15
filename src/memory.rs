@@ -138,7 +138,10 @@ impl Iterator for PhysicalRangePages {
 
 impl PhysicalRange {
     pub fn from_range(r: Range<usize>) -> Self {
-        Self { start: r.start, end: r.end }
+        Self {
+            start: r.start,
+            end: r.end,
+        }
     }
 
     pub fn from_multiboot_area(area: &multiboot2::MemoryArea) -> Self {
