@@ -1,6 +1,6 @@
-use alloc::alloc::{GlobalAlloc, Layout};
-use crate::sync::{Mutex, MutexGuard};
 use crate::round_up;
+use crate::sync::{Mutex, MutexGuard};
+use alloc::alloc::{GlobalAlloc, Layout};
 
 const HEAP_LEN: usize = 128 * 1024;
 static mut EARLY_HEAP: [u8; HEAP_LEN] = [0u8; HEAP_LEN];

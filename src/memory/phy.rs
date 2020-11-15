@@ -1,7 +1,7 @@
 use crate::sync::RwLock;
-use crate::{round_up, round_down, PHY_OFFSET, x86};
+use crate::{round_down, round_up, x86, PHY_OFFSET};
 use core::fmt;
-use core::ops::Range;
+use core::ops::{Add, Range};
 // use core::iter::Iterator;
 use super::PAGE_SIZE;
 
@@ -9,28 +9,48 @@ use super::PAGE_SIZE;
 pub struct PhysicalAddress(pub usize);
 
 impl PhysicalAddress {
-    fn page(self) -> usize {
-        round_down(self.0, PAGE_SIZE)
+    // pub fn page(self) -> usize {
+    //     round_down(self.0, PAGE_SIZE)
+    // }
+
+    pub fn page(self) -> Self {
+        PhysicalAddress(round_down(self.0, PAGE_SIZE))
     }
 
-    fn page_round_up(self) -> usize {
+    pub fn page_round_up(self) -> usize {
         round_up(self.0, PAGE_SIZE)
     }
 
-    fn page_index(self) -> usize {
+    pub fn page_index(self) -> usize {
         self.0 / PAGE_SIZE
     }
 
-    fn page_index_up(self) -> usize {
+    pub fn page_index_up(self) -> usize {
         self.page_round_up() / PAGE_SIZE
     }
 
-    unsafe fn write<T>(self, v: T) {
+    pub unsafe fn write<T>(self, v: T) {
         *((self.0 + PHY_OFFSET) as *mut T) = v
     }
 
-    unsafe fn read<T: Copy>(self) -> T {
+    pub unsafe fn read<T: Copy>(self) -> T {
         *((self.0 + PHY_OFFSET) as *const T)
+    }
+
+    pub unsafe fn as_ref<T>(self) -> &'static T {
+        &*((self.0 + PHY_OFFSET) as *const T)
+    }
+
+    pub unsafe fn as_mut<T>(self) -> &'static mut T {
+        &mut *((self.0 + PHY_OFFSET) as *mut T)
+    }
+}
+
+impl Add<usize> for PhysicalAddress {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self {
+        Self(self.0 + rhs)
     }
 }
 
