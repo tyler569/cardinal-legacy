@@ -8,8 +8,8 @@ extern "C" {
     fn asm_break_point();
     fn asm_pause();
 
-    fn asm_kernel_base() -> usize;
-    fn asm_kernel_top() -> usize;
+    fn asm_kernel_start() -> usize;
+    fn asm_kernel_end() -> usize;
 
     #[ffi_returns_twice]
     pub fn set_jump(buf: *mut JmpBuf) -> isize;
@@ -42,12 +42,12 @@ pub fn pause() {
     unsafe { asm_pause() };
 }
 
-pub fn kernel_base() -> usize {
-    unsafe { asm_kernel_base() }
+pub fn kernel_start() -> usize {
+    unsafe { asm_kernel_start() }
 }
 
-pub fn kernel_top() -> usize {
-    unsafe { asm_kernel_top() }
+pub fn kernel_end() -> usize {
+    unsafe { asm_kernel_end() }
 }
 
 bitflags! {

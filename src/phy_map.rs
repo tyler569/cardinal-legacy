@@ -1,109 +1,12 @@
-use crate::{x86, PHY_OFFSET};
+use crate::memory::{
+    PAGE_SIZE,
+    PhysicalAddress,
+    PhysicalPage,
+    PhysicalRange,
+};
 use crate::sync::RwLock;
-use crate::util::{round_down, round_up};
+use crate::x86;
 use core::fmt;
-use core::ops::{Add, Range};
-// use core::iter::Iterator;
-use super::PAGE_SIZE;
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct PhysicalAddress(pub usize);
-
-impl PhysicalAddress {
-    // pub fn page(self) -> usize {
-    //     round_down(self.0, PAGE_SIZE)
-    // }
-
-    pub fn page(self) -> Self {
-        PhysicalAddress(round_down(self.0, PAGE_SIZE))
-    }
-
-    pub fn page_round_up(self) -> usize {
-        round_up(self.0, PAGE_SIZE)
-    }
-
-    pub fn page_index(self) -> usize {
-        self.0 / PAGE_SIZE
-    }
-
-    pub fn page_index_up(self) -> usize {
-        self.page_round_up() / PAGE_SIZE
-    }
-
-    pub unsafe fn write<T>(self, v: T) {
-        *((self.0 + PHY_OFFSET) as *mut T) = v
-    }
-
-    pub unsafe fn read<T: Copy>(self) -> T {
-        *((self.0 + PHY_OFFSET) as *const T)
-    }
-
-    pub unsafe fn as_ref<T>(self) -> &'static T {
-        &*((self.0 + PHY_OFFSET) as *const T)
-    }
-
-    pub unsafe fn as_mut<T>(self) -> &'static mut T {
-        &mut *((self.0 + PHY_OFFSET) as *mut T)
-    }
-}
-
-impl Add<usize> for PhysicalAddress {
-    type Output = Self;
-
-    fn add(self, rhs: usize) -> Self {
-        Self(self.0 + rhs)
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct PhysicalRange {
-    base: PhysicalAddress,
-    top: PhysicalAddress,
-}
-
-impl PhysicalRange {
-    fn from_multiboot_area(area: &multiboot2::MemoryArea) -> Self {
-        let base = PhysicalAddress(area.start_address() as usize);
-        let top = PhysicalAddress(area.end_address() as usize);
-        PhysicalRange { base, top }
-    }
-
-    fn size(&self) -> usize {
-        self.top.0 - self.base.0
-    }
-
-    fn base_page_index(&self) -> usize {
-        self.base.page_index()
-    }
-
-    fn top_page_index(&self) -> usize {
-        self.top.page_index_up()
-    }
-
-    fn page_range(&self) -> Range<usize> {
-        self.base_page_index()..self.top_page_index()
-    }
-
-    // fn iter(&self) -> impl Iterator<Item = PhysicalAddress> {
-    //     self.base..self.top
-    // }
-
-    // fn iter_pages(&self) -> impl Iterator<Item = PhysicalAddress> {
-    //     let page_base = round_down(self.base);
-    //     (page_base..self.top).step_by(PAGE_SIZE)
-    // }
-}
-
-impl fmt::Debug for PhysicalRange {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.base.fmt(fmt)?;
-        write!(fmt, "..")?;
-        self.top.fmt(fmt)?;
-        Ok(())
-    }
-}
-
-// ----------------------------------------------------------------------- //
 
 /// PageRef is designed to resemble a Rust enum, but isn't one to ensure it
 /// fits in a single byte. It does this by having a limited range, supporting
@@ -208,26 +111,26 @@ impl PhysicalMap {
         }
     }
 
-    fn set_index_range(&mut self, r: Range<usize>, v: PageRef) {
-        for i in r {
-            self.set_index(i, v);
+    fn set_index_range(&mut self, r: impl Iterator<Item = PhysicalPage>, v: PageRef) {
+        for p in r {
+            self.set_index(p.index(), v);
         }
     }
 
     fn set(&mut self, p: PhysicalAddress, v: PageRef) {
-        self.set_index(p.page_index(), v)
+        self.set_index(p.page().index(), v)
     }
 
     fn set_range(&mut self, p: PhysicalRange, v: PageRef) {
-        self.set_index_range(p.page_range(), v)
+        self.set_index_range(p.pages(), v)
     }
 
     fn incref(&mut self, p: PhysicalAddress) {
-        self.map[p.page_index()].incref()
+        self.map[p.page().index()].incref()
     }
 
     fn decref(&mut self, p: PhysicalAddress) {
-        self.map[p.page_index()].decref()
+        self.map[p.page().index()].decref()
     }
 
     fn usable_index(&self) -> Option<usize> {
@@ -296,8 +199,8 @@ pub fn map_init(areas: multiboot2::MemoryAreaIter<'_>) {
     }
 
     let kernel_range = PhysicalRange {
-        base: PhysicalAddress(x86::kernel_base()),
-        top: PhysicalAddress(x86::kernel_top()),
+        start: x86::kernel_start(),
+        end: x86::kernel_end(),
     };
 
     println!("Leaking kernel: {:x?}", kernel_range);
@@ -317,7 +220,7 @@ pub fn alloc() -> PhysicalAddress {
 
 pub fn alloc_zero() -> PhysicalAddress {
     let page = PHYSICAL_MEMORY_MAP.write().alloc().expect("Out of memory");
-    unsafe { page.write([0; PAGE_SIZE]) };
+    unsafe { page.write_phy([0; PAGE_SIZE]) };
     page
 }
 

@@ -64,14 +64,14 @@ global asm_pause
 asm_pause:
     hlt
 
-global asm_kernel_base
-extern _kernel_phy_base
-asm_kernel_base:
-    mov rax, _kernel_phy_base
+global asm_kernel_start
+extern _kernel_phy_start
+asm_kernel_start:
+    mov rax, _kernel_phy_start
     ret
 
-global asm_kernel_top
-extern _kernel_phy_top
-asm_kernel_top:
-    mov rax, _kernel_phy_top
+global asm_kernel_end
+extern _kernel_phy_end
+asm_kernel_end:
+    mov rax, _kernel_phy_end
     ret

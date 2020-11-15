@@ -30,12 +30,13 @@ mod serial;
 mod allocator;
 mod interrupt;
 mod memory;
+mod phy_map;
 mod thread;
 mod util;
 mod x86;
 
-const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
-const PHY_OFFSET: usize = 0xFFFF_8000_0000_0000;
+use memory::LOAD_OFFSET;
+
 const USE_TIMER: bool = true;
 const MULTIBOOT2_MAGIC: u32 = 0x36d76289;
 
@@ -56,7 +57,7 @@ pub extern "C" fn kernel_main(
     }
 
     if let Some(memory_map_tag) = boot_info.memory_map_tag() {
-        memory::phy::map_init(memory_map_tag.all_memory_areas());
+        phy_map::map_init(memory_map_tag.all_memory_areas());
     }
 
     for module_tag in boot_info.module_tags() {
@@ -78,7 +79,7 @@ pub extern "C" fn kernel_main(
     let closed_fn = return_a_closure(10);
     println!("Call a closure: {}", closed_fn(10));
 
-    let test_page = memory::phy::alloc();
+    let test_page = phy_map::alloc();
     println!("{:x?}", test_page);
 
     thread::spawn(|| print!("a"));
