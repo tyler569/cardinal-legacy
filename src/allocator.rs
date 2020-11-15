@@ -1,4 +1,4 @@
-use crate::round_up;
+use crate::util::round_up;
 use crate::sync::{Mutex, MutexGuard};
 use alloc::alloc::{GlobalAlloc, Layout};
 

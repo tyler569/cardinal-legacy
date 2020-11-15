@@ -1,5 +1,6 @@
+use crate::{x86, PHY_OFFSET};
 use crate::sync::RwLock;
-use crate::{round_down, round_up, x86, PHY_OFFSET};
+use crate::util::{round_down, round_up};
 use core::fmt;
 use core::ops::{Add, Range};
 // use core::iter::Iterator;

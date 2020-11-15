@@ -1,5 +1,5 @@
 use super::phy::{self, PhysicalAddress};
-use super::PAGE_SIZE;
+// use super::PAGE_SIZE;
 use core::mem::size_of;
 use core::ops::{Add, BitAnd};
 
