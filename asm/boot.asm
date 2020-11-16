@@ -137,6 +137,14 @@ start_higher_half:
 
     mov rsp, hhstack_top
 
+    mov rax, 0xFFFFFFFF80000000
+    add rax, boot_p4_mapping
+    mov qword [rax], 0
+
+    mov rax, 0xFFFFFFFF80000000
+    add rax, boot_p3_mapping
+    mov qword [rax], 0
+
     mov eax, 0
     mov ds, eax
     mov es, eax
