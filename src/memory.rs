@@ -35,25 +35,25 @@ pub const LOAD_OFFSET: usize = 0xFFFF_FFFF_8000_0000;
 pub const PHY_OFFSET: usize = 0xFFFF_8000_0000_0000;
 pub const PAGE_SIZE: usize = 0x1000;
 
-const PAGE_MASK: usize = 0xFFFF_FFFF_FFFF_F000;
-const PAGE_OFFSET_MASK: usize = !PAGE_MASK;
-const PAGE_ADDR_MASK: usize = 0x00FF_FFFF_FFFF_F000;
-const PAGE_FLAGS_MASK: usize = 0xFF00_0000_0000_0FFF;
+pub const PAGE_MASK: usize = 0xFFFF_FFFF_FFFF_F000;
+pub const PAGE_OFFSET_MASK: usize = !PAGE_MASK;
+pub const PAGE_ADDR_MASK: usize = 0x00FF_FFFF_FFFF_F000;
+pub const PAGE_FLAGS_MASK: usize = 0xFF00_0000_0000_0FFF;
 
-const PAGE_PRESENT: usize = 0x01;
-const PAGE_WRITEABLE: usize = 0x02;
-const PAGE_USERMODE: usize = 0x04;
-const PAGE_ACCESSED: usize = 0x20;
-const PAGE_DIRTY: usize = 0x40;
-const PAGE_ISHUGE: usize = 0x80;
-const PAGE_GLOBAL: usize = 0x100;
-const PAGE_OS_RESERVED1: usize = 0x200;
-const PAGE_OS_RESERVED2: usize = 0x400;
-const PAGE_OS_RESERVED3: usize = 0x800;
+pub const PAGE_PRESENT: usize = 0x01;
+pub const PAGE_WRITEABLE: usize = 0x02;
+pub const PAGE_USERMODE: usize = 0x04;
+pub const PAGE_ACCESSED: usize = 0x20;
+pub const PAGE_DIRTY: usize = 0x40;
+pub const PAGE_ISHUGE: usize = 0x80;
+pub const PAGE_GLOBAL: usize = 0x100;
+pub const PAGE_OS_RESERVED1: usize = 0x200;
+pub const PAGE_OS_RESERVED2: usize = 0x400;
+pub const PAGE_OS_RESERVED3: usize = 0x800;
 
-const PAGE_TABLE_FLAGS: usize = PAGE_PRESENT | PAGE_WRITEABLE;
-const PAGE_COPYONWRITE: usize = PAGE_OS_RESERVED1;
-const PAGE_UNBACKED: usize = 0x1000000;
+pub const PAGE_TABLE_FLAGS: usize = PAGE_PRESENT | PAGE_WRITEABLE;
+pub const PAGE_COPYONWRITE: usize = PAGE_OS_RESERVED1;
+pub const PAGE_UNBACKED: usize = 0x1000000;
 
 impl PhysicalAddress {
     pub fn page(self) -> PhysicalPage {
@@ -89,6 +89,10 @@ impl Add<usize> for PhysicalAddress {
 }
 
 impl PhysicalPage {
+    pub fn from_usize(v: usize) -> Self {
+        Self(round_down(v, PAGE_SIZE))
+    }
+
     pub fn base_address(self) -> PhysicalAddress {
         PhysicalAddress(self.0)
     }
@@ -200,10 +204,11 @@ impl PageTable {
             PAGE_TABLE_FLAGS | PAGE_USERMODE
         };
         *p = PageTableEntry(phy_map::alloc_zero().0 | flags);
+        dprintln!("make_next_table: {:x?} -> {:x?}", p, (*p).0);
     }
 
     fn offset(v: VirtualAddress, level: usize) -> usize {
-        (v.0 >> (12 + level * 9)) & 0xFFF
+        (v.0 >> (12 + (level - 1) * 9)) & 0xFFF
     }
 
     fn pte_mut_recursive(
@@ -215,6 +220,8 @@ impl PageTable {
     ) -> Result<&mut PageTableEntry, PagingError> {
         let offset = Self::offset(v, level);
         let entry = Self::entry_mut(root, offset);
+        dprintln!("pte_mut_recursive: p{:#x} -> v{:#x} (level {}) (create {}) (offset {}) (entry {:x})",
+            root.0, v.0, level, create, offset, entry.0);
         if level == 1 {
             return Ok(entry);
         }
@@ -228,7 +235,7 @@ impl PageTable {
         self.pte_mut_recursive(entry.deref(), v, level - 1, create)
     }
 
-    fn pte(&self, v: VirtualAddress) -> PageTableEntry {
+    pub fn pte(&self, v: VirtualAddress) -> PageTableEntry {
         self.pte_mut_recursive(self.0, v, 4, false)
             .map(|p| *p)
             .unwrap_or(PageTableEntry::nil())
@@ -238,12 +245,18 @@ impl PageTable {
         &mut *self.pte_mut_recursive(self.0, v, 4, true).unwrap()
     }
 
-    fn map(&mut self, v: VirtualAddress, p: PhysicalPage, flags: usize) {
-        *self.pte_mut(v) = PageTableEntry::from_page_flags(p, flags);
+    pub fn map(&mut self, v: VirtualAddress, p: PhysicalPage, flags: usize) {
+        *self.pte_mut(v) =
+            PageTableEntry::from_page_flags(p, flags | PAGE_PRESENT);
     }
 
-    fn unmap(&mut self, v: VirtualAddress) {
+    pub fn unmap(&mut self, v: VirtualAddress) {
         *self.pte_mut(v) = PageTableEntry::nil();
+    }
+
+    pub fn edit_flags(&mut self, v: VirtualAddress, flags: usize) {
+        let pte_mut = self.pte_mut(v);
+        *pte_mut = (*pte_mut & PAGE_ADDR_MASK) | flags;
     }
 }
 

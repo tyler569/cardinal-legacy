@@ -17,7 +17,13 @@ extern "C" {
 
     fn asm_read_cr2() -> usize;
 
-    fn asm_jmp_to_user(ip: usize, sp: usize, arg0: usize, arg1: usize, arg2: usize);
+    fn asm_jmp_to_user(
+        ip: usize,
+        sp: usize,
+        arg0: usize,
+        arg1: usize,
+        arg2: usize,
+    );
 }
 
 pub fn enable_interrupts() {
@@ -52,9 +58,9 @@ pub fn kernel_end() -> usize {
     unsafe { asm_kernel_end() }
 }
 
-pub fn jmp_to_user(f: fn(), sp: usize) {
+pub fn jmp_to_user(f: usize, sp: usize) {
     unsafe {
-        asm_jmp_to_user(f as usize, sp, 0, 0, 0);
+        asm_jmp_to_user(f, sp, 0, 0, 0);
     };
 }
 

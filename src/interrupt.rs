@@ -1,5 +1,5 @@
-use crate::{serial, thread};
 use crate::x86::{self, FaultCode};
+use crate::{serial, thread};
 
 const DETAIL_PRINT: bool = false;
 
@@ -37,7 +37,7 @@ const EXCEPTIONS: [&str; 32] = [
     "Security Exception",
     "Reserved",
 ];
-// 
+//
 // enum Exception {
 //     DivByZero = 0,
 //     Debug = 1,
@@ -61,7 +61,7 @@ const EXCEPTIONS: [&str; 32] = [
 //     Security = 30,
 //     Reserved,
 // }
-// 
+//
 // impl Display for Exception {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         let name = match *self {
@@ -104,10 +104,13 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     #[allow(clippy::match_overlapping_arm)]
     match interrupt {
         14 => {
+            loop {}
             dprintln!("Page fault at {:#x}", x86::read_cr2());
             dprintln!("Fault occurred at {:#x}", (*frame).ip);
-            dprintln!("Page fault code: {:?}", 
-                FaultCode::from_bits((*frame).error_code as u16));
+            dprintln!(
+                "Page fault code: {:?}",
+                FaultCode::from_bits((*frame).error_code as u16)
+            );
             panic!();
         }
         32 => {

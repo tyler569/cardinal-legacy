@@ -35,7 +35,7 @@ mod thread;
 mod util;
 mod x86;
 
-use memory::LOAD_OFFSET;
+use memory::{PhysicalPage, VirtualAddress, LOAD_OFFSET, PAGE_USERMODE};
 
 const USE_TIMER: bool = true;
 const MULTIBOOT2_MAGIC: u32 = 0x36d76289;
@@ -108,8 +108,14 @@ pub extern "C" fn kernel_main(
         fn userland_function() {
             panic!();
         }
+        let mut table = memory::PageTable(memory::PhysicalPage(0x101000));
+        table.map(
+            VirtualAddress(0x5000),
+            PhysicalPage::from_usize(userland_function as usize),
+            PAGE_USERMODE,
+        );
         || {
-            x86::jmp_to_user(userland_function, 0);
+            x86::jmp_to_user(0x5000, 0);
         }
     });
 

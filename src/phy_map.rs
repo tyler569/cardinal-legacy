@@ -144,6 +144,7 @@ impl PhysicalMap {
     fn alloc(&mut self) -> Option<PhysicalAddress> {
         if let Some(i) = self.usable_index() {
             let page = PhysicalAddress(i * PAGE_SIZE);
+            println!("alloc: {:x?}", page);
             self.incref(page);
             Some(page)
         } else {
