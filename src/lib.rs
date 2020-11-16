@@ -104,6 +104,14 @@ pub extern "C" fn kernel_main(
         }
         println!();
     });
+    thread::spawn({
+        fn userland_function() {
+            panic!();
+        }
+        || {
+            x86::jmp_to_user(userland_function, 0);
+        }
+    });
 
     x86::enable_irqs();
     thread::schedule();

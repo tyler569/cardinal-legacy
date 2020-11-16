@@ -64,8 +64,8 @@ return_from_interrupt:
 ;; rdx: arg 1
 ;; rcx: arg 2
 ;; r8 : arg 3
-global jmp_to_userspace
-jmp_to_userspace:
+global asm_jmp_to_user 
+asm_jmp_to_user:
     ;; TODO: 0 GPRs to not leak kernel data
     push 0x20 | 3   ;; SS
     push rsi        ;; RSP
