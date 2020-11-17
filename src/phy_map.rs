@@ -220,7 +220,7 @@ pub fn alloc() -> PhysicalAddress {
 
 pub fn alloc_zero() -> PhysicalAddress {
     let page = PHYSICAL_MEMORY_MAP.write().alloc().expect("Out of memory");
-    unsafe { page.write_phy([0; PAGE_SIZE]) };
+    unsafe { page.write_phy([0u8; PAGE_SIZE]) };
     page
 }
 

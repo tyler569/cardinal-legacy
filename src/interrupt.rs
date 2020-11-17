@@ -104,7 +104,6 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     #[allow(clippy::match_overlapping_arm)]
     match interrupt {
         14 => {
-            loop {}
             dprintln!("Page fault at {:#x}", x86::read_cr2());
             dprintln!("Fault occurred at {:#x}", (*frame).ip);
             dprintln!(
