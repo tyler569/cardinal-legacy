@@ -35,7 +35,13 @@ mod thread;
 mod util;
 mod x86;
 
-use memory::{PhysicalPage, VirtualAddress, LOAD_OFFSET, PAGE_USERMODE};
+use memory::{
+    PhysicalPage,
+    VirtualAddress,
+    LOAD_OFFSET,
+    PAGE_USERMODE,
+    PAGE_SIZE,
+};
 
 const USE_TIMER: bool = true;
 const MULTIBOOT2_MAGIC: u32 = 0x36d76289;
@@ -70,18 +76,6 @@ pub extern "C" fn kernel_main(
     x86::timer_init(1000);
     x86::unmask_irq(0);
 
-    println!("Let's test some formatting {:x}", multiboot_magic);
-    let a = |x| x + 10;
-    println!("Call a lambda: {}", a(10));
-    fn return_a_closure(x: i32) -> Box<dyn FnOnce(i32) -> i32> {
-        Box::new(move |a| a + x)
-    }
-    let closed_fn = return_a_closure(10);
-    println!("Call a closure: {}", closed_fn(10));
-
-    let test_page = phy_map::alloc();
-    println!("{:x?}", test_page);
-
     thread::spawn(|| print!("a"));
     thread::spawn(|| print!("b"));
     thread::spawn(|| print!("c"));
@@ -109,13 +103,14 @@ pub extern "C" fn kernel_main(
             panic!();
         }
         let mut table = memory::PageTable(memory::PhysicalPage(0x101000));
+        let function_phy = userland_function as usize - LOAD_OFFSET;
         table.map(
             VirtualAddress(0x5000),
-            PhysicalPage::from_usize(userland_function as usize),
+            PhysicalPage::from_usize(function_phy),
             PAGE_USERMODE,
         );
-        || {
-            x86::jmp_to_user(0x5000, 0);
+        move || {
+            x86::jmp_to_user(0x5000 + function_phy/PAGE_SIZE, 0);
         }
     });
 

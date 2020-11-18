@@ -93,6 +93,10 @@ impl PhysicalPage {
         Self(round_down(v, PAGE_SIZE))
     }
 
+    pub fn from_kernel_pointer(v: usize) -> Self {
+        Self(round_down(v - LOAD_OFFSET, PAGE_SIZE))
+    }
+
     pub fn base_address(self) -> PhysicalAddress {
         PhysicalAddress(self.0)
     }
