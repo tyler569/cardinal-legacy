@@ -68,27 +68,17 @@ pub extern "C" fn kernel_main(
     x86::timer_init(1000);
     x86::unmask_irq(0);
 
-    for q in 0..40 {
-        thread::spawn(move || dprint!("a{}", q));
-        thread::spawn(move || dprint!("b{}", q));
-        thread::spawn(move || dprint!("c{}", q));
-        thread::spawn(move || dprint!("d{}", q));
-        thread::spawn(move || dprint!("e{}", q));
+    fn prloop() {
+        let id = thread::id();
+        for _ in 0..10 {
+            dprint!("[{}]", id);
+            thread::schedule();
+        }
     }
 
-    thread::spawn(|| {
-        thread::spawn(|| {
-            println!("INNNNNNNNNNER");
-        });
-    });
-
-    // for _ in 0..30 {
-    //     thread::spawn(|| dprint!("a"));
-    //     thread::spawn(|| dprint!("b"));
-    //     thread::spawn(|| dprint!("c"));
-    //     thread::spawn(|| dprint!("d"));
-    //     thread::spawn(|| dprint!("e"));
-    // }
+    for _ in 0..150 {
+        thread::spawn(prloop);
+    }
 
     x86::enable_irqs();
     thread::schedule();

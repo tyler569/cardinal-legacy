@@ -119,8 +119,7 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
             thread::schedule();
         }
         36 => {
-            let c = serial::GLOBAL_SERIAL.lock().read_byte();
-            dprintln!("serial read: {}", c as char);
+            serial::GLOBAL_SERIAL.lock().handle_irq();
             x86::send_eoi(interrupt - 32);
         }
         32..=48 => {
@@ -135,22 +134,5 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
             );
             panic!();
         }
-    }
-}
-
-use core::ops::Drop;
-
-pub struct InterruptDisabler;
-
-impl InterruptDisabler {
-    pub fn new() -> Self {
-        x86::disable_irqs();
-        InterruptDisabler {}
-    }
-}
-
-impl Drop for InterruptDisabler {
-    fn drop(&mut self) {
-        x86::enable_irqs();
     }
 }

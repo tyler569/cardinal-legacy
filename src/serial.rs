@@ -1,10 +1,11 @@
 use core::fmt::{self, Write};
-
+use alloc::collections::VecDeque;
 use crate::sync::Mutex;
 use crate::x86::{inb, outb};
 
 pub struct SerialPort {
     port: u16,
+    buffer: VecDeque<u8>,
 }
 
 const UART_DATA: u16 = 0;
@@ -18,8 +19,11 @@ const UART_LINE_STATUS: u16 = 5;
 const UART_MODEM_STATUS: u16 = 6;
 
 impl SerialPort {
-    pub const fn new(port: u16) -> Self {
-        SerialPort { port }
+    pub fn new(port: u16) -> Self {
+        SerialPort {
+            port,
+            buffer: VecDeque::new(),
+        }
     }
 
     pub fn init(&mut self) {
@@ -44,8 +48,9 @@ impl SerialPort {
         self.status() & 0x01 == 0
     }
 
-    pub fn read_byte(&mut self) -> u8 {
-        unsafe { inb(self.port + UART_DATA) }
+    pub unsafe fn handle_irq(&mut self) {
+        let byte = inb(self.port + UART_DATA);
+        self.buffer.push_back(byte);
     }
 }
 

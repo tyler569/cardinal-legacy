@@ -182,10 +182,7 @@ fn thread_idle() {
     }
 }
 
-use crate::interrupt::InterruptDisabler;
-
-pub fn schedule() {
-    let _int = InterruptDisabler::new();
+fn schedule_inner() {
     let from_buf: *mut JmpBuf;
     let to_buf: *const JmpBuf;
     let to_stack: usize;
@@ -235,6 +232,18 @@ pub fn schedule() {
         x86::set_kernel_stack(to_stack);
         switch(to_buf, from_buf);
     }
+}
+
+pub fn schedule() {
+    x86::disable_irqs();
+    schedule_inner();
+    x86::enable_irqs();
+}
+
+pub fn id() -> usize {
+    running().map(|th| {
+        th.read().id
+    }).unwrap_or(0)
 }
 
 unsafe fn switch(to: *const JmpBuf, from: *mut JmpBuf) {
