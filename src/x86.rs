@@ -1,3 +1,5 @@
+use core::fmt;
+
 extern "C" {
     pub fn outb(port: u16, val: u8);
     pub fn inb(port: u16) -> u8;
@@ -24,6 +26,8 @@ extern "C" {
         arg1: usize,
         arg2: usize,
     );
+
+    static mut kernel_stack: usize;
 }
 
 pub fn enable_interrupts() {
@@ -64,6 +68,10 @@ pub fn jmp_to_user(f: usize, sp: usize) {
     };
 }
 
+pub unsafe fn set_kernel_stack(new_stack: usize) {
+    *&mut kernel_stack = new_stack;
+}
+
 bitflags! {
     pub struct FaultCode: u16 {
         const PRESENT  = 0x01;
@@ -71,6 +79,37 @@ bitflags! {
         const USERMODE = 0x04;
         const RESERVED = 0x08;
         const IFETCH   = 0x10;
+    }
+}
+
+impl fmt::Display for FaultCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.contains(FaultCode::WRITE) {
+            write!(f, "writing")?;
+        } else {
+            write!(f, "reading")?;
+        }
+        write!(f, " ")?;
+        if self.contains(FaultCode::USERMODE) {
+            write!(f, "user")?;
+        } else {
+            write!(f, "kernel")?;
+        }
+        write!(f, " ")?;
+        if self.contains(FaultCode::IFETCH) {
+            write!(f, "instruction")?;
+        } else {
+            write!(f, "data")?;
+        }
+        write!(f, " to a ")?;
+        if !self.contains(FaultCode::PRESENT) {
+            write!(f, "non-")?;
+        }
+        write!(f, "present page")?;
+        if self.contains(FaultCode::RESERVED) {
+            write!(f, " caused by writing to a reserved field")?;
+        }
+        Ok(())
     }
 }
 

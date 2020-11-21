@@ -35,7 +35,7 @@ end
 if options[:mode] == :addr2line
   addrs = backtrace
   return if addrs.length == 0
-  cmd = "addr2line -fips -e #{options[:file]} #{addrs.join " "}"
+  cmd = "addr2line -fips -e #{options[:file]} #{addrs.join " "} | rustfilt"
   system cmd
 end
 

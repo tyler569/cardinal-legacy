@@ -11,14 +11,14 @@ use spin::RwLock;
 struct Stack([u8; Stack::SIZE]);
 
 impl Stack {
-    const SIZE: usize = 2048;
+    const SIZE: usize = 4096;
 
     fn new_boxed() -> Box<Stack> {
         Box::new(Stack([0; Self::SIZE]))
     }
 
     fn stack_ptr(&self) -> usize {
-        (&self.0 as *const u8).wrapping_add(2048) as usize
+        (&self.0[0] as *const u8).wrapping_add(Self::SIZE - 2048) as usize
     }
 }
 
@@ -28,10 +28,19 @@ impl fmt::Debug for Stack {
     }
 }
 
+struct StartFn(Box<dyn Fn() + Send + Sync>);
+
+impl fmt::Debug for StartFn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "StartFn(<>)")
+    }
+}
+
+#[derive(Debug)]
 pub struct Thread {
     id: usize,
     pub context: JmpBuf,
-    start_fn: Option<Box<dyn Fn() + Send + Sync>>,
+    start_fn: Option<StartFn>,
     stack: Box<Stack>,
     state: State,
 }
@@ -66,22 +75,6 @@ impl Thread {
     }
 }
 
-// use core::ops::Drop;
-// impl Drop for Thread {
-//     fn drop(&mut self) {
-//         println!("dropping thread: {}", self.id);
-//     }
-// }
-
-impl fmt::Debug for Thread {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Thread")
-            .field("id", &self.id)
-            .field("state", &self.state)
-            .finish()
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum State {
     Running,
@@ -105,11 +98,12 @@ struct ThreadSet {
 
 impl ThreadSet {
     fn new() -> Self {
+        let idle = Arc::new(RwLock::new(Thread::new_idle()));
         ThreadSet {
             threads: BTreeMap::new(),
             runnable: VecDeque::new(),
             running: None,
-            idle: Arc::new(RwLock::new(Thread::new_idle())),
+            idle,
         }
     }
 
@@ -128,7 +122,7 @@ impl ThreadSet {
     fn spawn(&mut self, func: Box<dyn Fn() + Send + Sync>) -> ThreadArc {
         let id = self.next_id();
         let mut th = Thread::new(id);
-        th.start_fn = Some(func);
+        th.start_fn = Some(StartFn(func));
         let arc = Arc::new(RwLock::new(th));
         self.threads.insert(id, arc.clone());
         self.set_runnable(arc.clone());
@@ -170,17 +164,18 @@ pub fn exit() -> ! {
 // a start_fn. I don't know what else could be done in those cases.
 fn thread_entry() {
     x86::enable_irqs();
-    let start_fn: Option<Box<dyn Fn() + Send + Sync>>;
+    let start_fn: Option<StartFn>;
     {
         let thread =
             running().expect("Attempt to enter a thread that does not exist");
         start_fn = mem::replace(&mut thread.write().start_fn, None);
     }
-    (start_fn.unwrap())();
+    (start_fn.unwrap().0)();
     exit();
 }
 
 fn thread_idle() {
+    dprintln!(" --> in thread_idle");
     loop {
         x86::enable_irqs();
         x86::pause();
@@ -193,6 +188,7 @@ pub fn schedule() {
     let _int = InterruptDisabler::new();
     let from_buf: *mut JmpBuf;
     let to_buf: *const JmpBuf;
+    let to_stack: usize;
 
     {
         let to: ThreadArc;
@@ -226,15 +222,17 @@ pub fn schedule() {
 
         threads.running = Some(to.clone());
 
-        // dprintln!("{:?} -> {:?}", from, to);
+        // dprintln!(" --> SWAP {:x?} -> {:x?}", from, to);
 
         to_buf = &to.read().context as *const JmpBuf;
+        to_stack = to.read().stack.stack_ptr();
         from_buf = from
             .map(|th| &mut th.write().context as *mut JmpBuf)
             .unwrap_or(ptr::null_mut());
     }
 
     unsafe {
+        x86::set_kernel_stack(to_stack);
         switch(to_buf, from_buf);
     }
 }

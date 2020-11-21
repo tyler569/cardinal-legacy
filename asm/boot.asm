@@ -177,6 +177,7 @@ extern idt_ptr
 
     ; rdi and rsi set above before jump to hh
 
+.call_main:
 extern kernel_main
     call kernel_main
 

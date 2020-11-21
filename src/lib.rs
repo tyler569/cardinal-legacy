@@ -2,14 +2,12 @@
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]
 #![feature(ffi_returns_twice)]
-#![feature(const_btree_new)]
 #![allow(dead_code)]
 
 #[cfg(target_os = "none")]
 use core::panic::PanicInfo;
 
 extern crate alloc;
-use alloc::boxed::Box;
 
 #[macro_use]
 extern crate bitflags;
@@ -35,13 +33,7 @@ mod thread;
 mod util;
 mod x86;
 
-use memory::{
-    PhysicalPage,
-    VirtualAddress,
-    LOAD_OFFSET,
-    PAGE_USERMODE,
-    PAGE_SIZE,
-};
+use memory::LOAD_OFFSET;
 
 const USE_TIMER: bool = true;
 const MULTIBOOT2_MAGIC: u32 = 0x36d76289;
@@ -76,43 +68,27 @@ pub extern "C" fn kernel_main(
     x86::timer_init(1000);
     x86::unmask_irq(0);
 
-    thread::spawn(|| print!("a"));
-    thread::spawn(|| print!("b"));
-    thread::spawn(|| print!("c"));
-    thread::spawn(|| print!("d"));
-    thread::spawn(|| print!("e"));
-
-    let x = "Hello World";
-    thread::spawn(move || println!("{}", x));
+    for q in 0..40 {
+        thread::spawn(move || dprint!("a{}", q));
+        thread::spawn(move || dprint!("b{}", q));
+        thread::spawn(move || dprint!("c{}", q));
+        thread::spawn(move || dprint!("d{}", q));
+        thread::spawn(move || dprint!("e{}", q));
+    }
 
     thread::spawn(|| {
-        for _ in 0..100 {
-            dprint!("a");
-            thread::schedule();
-        }
+        thread::spawn(|| {
+            println!("INNNNNNNNNNER");
+        });
     });
-    thread::spawn(|| {
-        for _ in 0..100 {
-            dprint!("b");
-            thread::schedule();
-        }
-        println!();
-    });
-    thread::spawn({
-        fn userland_function() {
-            panic!();
-        }
-        let mut table = memory::PageTable(memory::PhysicalPage(0x101000));
-        let function_phy = userland_function as usize - LOAD_OFFSET;
-        table.map(
-            VirtualAddress(0x5000),
-            PhysicalPage::from_usize(function_phy),
-            PAGE_USERMODE,
-        );
-        move || {
-            x86::jmp_to_user(0x5000 + function_phy/PAGE_SIZE, 0);
-        }
-    });
+
+    // for _ in 0..30 {
+    //     thread::spawn(|| dprint!("a"));
+    //     thread::spawn(|| dprint!("b"));
+    //     thread::spawn(|| dprint!("c"));
+    //     thread::spawn(|| dprint!("d"));
+    //     thread::spawn(|| dprint!("e"));
+    // }
 
     x86::enable_irqs();
     thread::schedule();

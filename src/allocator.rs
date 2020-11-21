@@ -2,7 +2,7 @@ use crate::sync::{Mutex, MutexGuard};
 use crate::util::round_up;
 use alloc::alloc::{GlobalAlloc, Layout};
 
-const HEAP_LEN: usize = 128 * 1024;
+const HEAP_LEN: usize = 1024 * 1024;
 static mut EARLY_HEAP: [u8; HEAP_LEN] = [0u8; HEAP_LEN];
 
 pub struct Locked<A>(Mutex<A>);
@@ -33,6 +33,10 @@ unsafe impl GlobalAlloc for Locked<EarlyHeap> {
 
         let new_base = round_up(allocator.index, layout.align());
         let next_index = new_base + layout.size();
+
+        if next_index > HEAP_LEN {
+            return core::ptr::null_mut();
+        }
 
         allocator.index = next_index;
 

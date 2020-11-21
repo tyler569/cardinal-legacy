@@ -105,11 +105,13 @@ pub unsafe extern "C" fn c_interrupt_shim(frame: *mut x86::InterruptFrame) {
     match interrupt {
         14 => {
             dprintln!("Page fault at {:#x}", x86::read_cr2());
-            dprintln!("Fault occurred at {:#x}", (*frame).ip);
-            dprintln!(
-                "Page fault code: {:?}",
+            dprintln!("Fault occurred at ({:#x}) <.>", (*frame).ip);
+
+            if let Some(fault) =
                 FaultCode::from_bits((*frame).error_code as u16)
-            );
+            {
+                dprintln!("Page fault code: {}", fault);
+            }
             panic!();
         }
         32 => {
