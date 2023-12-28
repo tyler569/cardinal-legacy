@@ -18,7 +18,7 @@ all: cardinal.iso
 	nasm -felf64 -o $@ $<
 
 $(RUSTLIB): $(RUSTSRC) Cargo.toml
-	cargo xbuild
+	cargo build -Zbuild-std
 
 cardinal.elf: $(ASMOBJ) $(RUSTLIB)
 	ld -g -nostdlib -o $@ -T link.ld $(ASMOBJ) $(RUSTLIB)
